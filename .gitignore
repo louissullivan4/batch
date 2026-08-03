@@ -1,2 +1,5 @@
-.claude/settings.local.json
-.claude/settings.json
+.claude/**
+**/CLAUDE.md
+**/.mcp.json
+setup.md
+.DS_Store
