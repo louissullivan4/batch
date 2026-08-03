@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin:0; background:#FAF7F2; color:#1C1917; font-family:'Spline Sans',sans-serif; }
+    a { color:#943109; } a:hover { color:#732708; }
+  </style>
+</helmet>
+<div style="max-width:1194px; margin:0 auto; padding:48px 48px 96px; display:flex; flex-direction:column; gap:56px">
+
+  <header style="display:flex; flex-direction:column; gap:12px; border-bottom:2px solid #1C1917; padding-bottom:24px">
+    <div style="font-size:40px; font-weight:700; line-height:44px; letter-spacing:-0.01em">Batch — design system</div>
+    <div style="font-size:17px; line-height:24px; color:#524E48; max-width:70ch">Point of sale for independent coffee shops. iPad landscape, 1194×834pt — every specimen below is rendered at real size. All meaning-carrying colour is measured at ≥7:1 against the surface.</div>
+    <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:500; line-height:18px; color:#524E48">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.08em; color:#57534E; border:1px solid #DED6C8; border-radius:999px; padding:3px 8px; background:#FFFFFF">CAF&Eacute;</span>
+      marks decisions driven by the environment — glare, wet hands, arm's length — rather than aesthetics.
+    </div>
+  </header>
+
+  <section style="display:flex; flex-direction:column; gap:20px">
+    <h2 style="margin:0; font-size:28px; font-weight:600; line-height:34px">1 · Colour</h2>
+    <div style="font-size:15px; line-height:22px; color:#524E48; max-width:78ch">Warm off-white ground, near-black ink, one ember accent. Ratios are measured against surface #FAF7F2. <span style="font-size:11px; font-weight:600; letter-spacing:0.08em; border:1px solid #DED6C8; border-radius:999px; padding:2px 7px; background:#FFFFFF">CAF&Eacute;</span> The 7:1 floor (not 4.5:1) is for direct sun and window glare on a counter-mounted screen.</div>
+    <div style="display:grid; grid-template-columns:56px 150px 100px 110px 1fr; gap:0; border:1px solid #DED6C8; border-radius:14px; overflow:hidden; background:#FFFFFF; font-size:15px; line-height:20px">
+      <div style="display:contents; font-weight:600; font-size:13px; letter-spacing:0.04em; color:#524E48">
+        <div style="padding:12px 16px; border-bottom:1px solid #DED6C8"></div>
+        <div style="padding:12px 0; border-bottom:1px solid #DED6C8">ROLE</div>
+        <div style="padding:12px 0; border-bottom:1px solid #DED6C8">HEX</div>
+        <div style="padding:12px 0; border-bottom:1px solid #DED6C8">VS SURFACE</div>
+        <div style="padding:12px 16px 12px 0; border-bottom:1px solid #DED6C8">USE</div>
+      </div>
+      <sc-for list="{{ colors }}" as="c" hint-placeholder-count="11">
+        <div style="display:contents">
+          <div style="padding:10px 16px; border-bottom:1px solid #F0EBE2"><div style="width:32px; height:32px; border-radius:6px; border:1px solid #DED6C8" ref="{{ c.swatchRef }}"></div></div>
+          <div style="padding:14px 0; border-bottom:1px solid #F0EBE2; font-weight:600">{{ c.role }}</div>
+          <div style="padding:14px 0; border-bottom:1px solid #F0EBE2; font-feature-settings:'tnum'; color:#524E48">{{ c.hex }}</div>
+          <div style="padding:14px 0; border-bottom:1px solid #F0EBE2; font-feature-settings:'tnum'; font-weight:600">{{ c.ratio }}</div>
+          <div style="padding:14px 16px 14px 0; border-bottom:1px solid #F0EBE2; color:#524E48">{{ c.use }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <ul style="margin:0; padding-left:20px; font-size:15px; line-height:24px; color:#524E48; max-width:82ch; display:flex; flex-direction:column; gap:6px">
+      <li><strong style="color:#1C1917">White on accent = 7.77:1</strong>, on accent-pressed = 10.38:1, on success = 7.84:1, on destructive = 7.49:1 — filled buttons keep the 7:1 floor too.</li>
+      <li><strong style="color:#1C1917">Offline-neutral is a warm grey, deliberately outside the semantic hue families.</strong> It can never be mistaken for warning or error, and it always ships with the dashed-ring glyph and the word "Offline" — colour alone never encodes state.</li>
+      <li>Border (1.35:1) is decorative only; anything that must be findable in glare gets ink, not a hairline.</li>
+    </ul>
+  </section>
+
+  <section style="display:flex; flex-direction:column; gap:20px">
+    <h2 style="margin:0; font-size:28px; font-weight:600; line-height:34px">2 · Type</h2>
+    <div style="font-size:15px; line-height:22px; color:#524E48; max-width:78ch">One family: <strong style="color:#1C1917">Spline Sans</strong> — open counters and a tall x-height that survive distance and glare, without reading as another Inter product. Prices and quantities always set tabular (<span style="font-feature-settings:'tnum'">tnum</span>) so columns of money align. <span style="font-size:11px; font-weight:600; letter-spacing:0.08em; border:1px solid #DED6C8; border-radius:999px; padding:2px 7px; background:#FFFFFF">CAF&Eacute;</span> Nothing meaning-carrying is set below 15pt — 13pt caption is for timestamps and metadata only, never the sole carrier of information.</div>
+    <div style="display:flex; flex-direction:column; border:1px solid #DED6C8; border-radius:14px; background:#FFFFFF; overflow:hidden">
+      <sc-for list="{{ typeScale }}" as="t" hint-placeholder-count="6">
+        <div style="display:grid; grid-template-columns:170px 1fr 320px; gap:24px; align-items:center; padding:18px 24px; border-bottom:1px solid #F0EBE2">
+          <div style="font-size:13px; font-weight:500; line-height:18px; color:#524E48; font-feature-settings:'tnum'"><strong style="color:#1C1917; font-size:15px; font-weight:600">{{ t.name }}</strong><br>{{ t.spec }}</div>
+          <div style="font-feature-settings:'tnum'" ref="{{ t.sampleRef }}">{{ t.sample }}</div>
+          <div style="font-size:13px; font-weight:500; line-height:18px; color:#524E48">{{ t.use }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:flex; flex-direction:column; gap:20px">
+    <h2 style="margin:0; font-size:28px; font-weight:600; line-height:34px">3 · Spacing &amp; radius</h2>
+    <div style="display:flex; gap:24px; align-items:stretch">
+      <div style="flex:1; border:1px solid #DED6C8; border-radius:14px; background:#FFFFFF; padding:24px; display:flex; flex-direction:column; gap:14px">
+        <sc-for list="{{ spaces }}" as="s" hint-placeholder-count="7">
+          <div style="display:flex; align-items:center; gap:16px; font-size:15px; line-height:20px">
+            <span style="width:44px; font-weight:600">{{ s.name }}</span>
+            <span style="width:36px; color:#524E48; font-feature-settings:'tnum'">{{ s.px }}</span>
+            <span style="height:16px; background:#943109; border-radius:2px" ref="{{ s.barRef }}"></span>
+          </div>
+        </sc-for>
+        <div style="font-size:13px; font-weight:500; line-height:18px; color:#524E48">Base-4 scale. Grid gutters between tappable tiles are never below md (12) so neighbouring targets can't be hit by accident with a wet thumb.</div>
+      </div>
+      <div style="width:420px; border:1px solid #DED6C8; border-radius:14px; background:#FFFFFF; padding:24px; display:flex; flex-direction:column; gap:16px">
+        <div style="display:flex; gap:20px; align-items:flex-end">
+          <div style="text-align:center"><div style="width:72px; height:72px; border:2px solid #1C1917; border-radius:6px"></div><div style="font-size:13px; font-weight:500; margin-top:8px">sm · 6</div></div>
+          <div style="text-align:center"><div style="width:72px; height:72px; border:2px solid #1C1917; border-radius:10px"></div><div style="font-size:13px; font-weight:500; margin-top:8px">md · 10</div></div>
+          <div style="text-align:center"><div style="width:72px; height:72px; border:2px solid #1C1917; border-radius:14px"></div><div style="font-size:13px; font-weight:500; margin-top:8px">lg · 14</div></div>
+          <div style="text-align:center"><div style="width:72px; height:44px; border:2px solid #1C1917; border-radius:999px"></div><div style="font-size:13px; font-weight:500; margin-top:8px">pill</div></div>
+        </div>
+        <div style="font-size:13px; font-weight:500; line-height:18px; color:#524E48">sm = chips inside rows · md = buttons, keys · lg = tiles, cards · pill = status. Touch: <strong style="color:#1C1917">min 48pt, primary actions 64pt.</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex; flex-direction:column; gap:24px">
+    <h2 style="margin:0; font-size:28px; font-weight:600; line-height:34px">4 · Specimens — real size</h2>
+
+    <div style="border:1px solid #DED6C8; border-radius:14px; background:#FFFFFF; padding:32px; display:flex; flex-direction:column; gap:20px">
+      <div style="font-size:15px; font-weight:600; line-height:20px">Buttons</div>
+      <div style="display:flex; gap:24px; align-items:center; flex-wrap:wrap">
+        <div style="display:flex; flex-direction:column; gap:8px"><button style="height:64px; padding:0 40px; background:#943109; color:#FFFFFF; border:none; border-radius:10px; font:600 20px/1 'Spline Sans'; cursor:pointer">Charge €8.40</button><span style="font-size:13px; font-weight:500; color:#524E48">Primary · 64pt · default</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px"><button style="height:64px; padding:0 40px; background:#732708; color:#FFFFFF; border:none; border-radius:10px; font:600 20px/1 'Spline Sans'; box-shadow:inset 0 3px 6px rgba(0,0,0,0.35); cursor:pointer">Charge €8.40</button><span style="font-size:13px; font-weight:500; color:#524E48">Primary · pressed</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px"><button style="height:48px; padding:0 28px; background:#FFFFFF; color:#1C1917; border:1.5px solid #1C1917; border-radius:10px; font:600 17px/1 'Spline Sans'; cursor:pointer">Hold order</button><span style="font-size:13px; font-weight:500; color:#524E48">Secondary · 48pt · default</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px"><button style="height:48px; padding:0 28px; background:#EDE7DC; color:#1C1917; border:1.5px solid #1C1917; border-radius:10px; font:600 17px/1 'Spline Sans'; box-shadow:inset 0 2px 4px rgba(28,25,23,0.18); cursor:pointer">Hold order</button><span style="font-size:13px; font-weight:500; color:#524E48">Secondary · pressed</span></div>
+      </div>
+      <div style="font-size:13px; font-weight:500; line-height:18px; color:#524E48; max-width:82ch"><span style="font-size:11px; font-weight:600; letter-spacing:0.08em; border:1px solid #DED6C8; border-radius:999px; padding:2px 7px">CAF&Eacute;</span> Pressed = darker fill + inner shadow, a state visible under glare and through a latex glove. There are no hover states anywhere in the system; touch-down is the only intermediate state.</div>
+    </div>
+
+    <div style="display:flex; gap:24px">
+      <div style="flex:1; border:1px solid #DED6C8; border-radius:14px; background:#FFFFFF; padding:32px; display:flex; flex-direction:column; gap:20px">
+        <div style="font-size:15px; font-weight:600; line-height:20px">Menu tile — order grid</div>
+        <div style="display:flex; gap:12px">
+          <div style="width:176px; height:120px; background:#FFFFFF; border:1.5px solid #DED6C8; border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 1px 2px rgba(28,25,23,0.06)">
+            <div style="font-size:20px; font-weight:600; line-height:26px">Flat white</div>
+            <div style="font-size:17px; font-weight:600; line-height:24px; color:#524E48; font-feature-settings:'tnum'">€3.80</div>
+          </div>
+          <div style="width:176px; height:120px; background:#F7E8DF; border:2px solid #943109; border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; justify-content:space-between">
+            <div style="font-size:20px; font-weight:600; line-height:26px">Flat white</div>
+            <div style="display:flex; justify-content:space-between; align-items:center"><span style="font-size:17px; font-weight:600; color:#524E48; font-feature-settings:'tnum'">€3.80</span><span style="min-width:28px; height:28px; border-radius:999px; background:#943109; color:#FFFFFF; font:600 15px/28px 'Spline Sans'; text-align:center; padding:0 6px">2</span></div>
+          </div>
+        </div>
+        <div style="font-size:13px; font-weight:500; line-height:18px; color:#524E48"><span style="font-size:11px; font-weight:600; letter-spacing:0.08em; border:1px solid #DED6C8; border-radius:999px; padding:2px 7px">CAF&Eacute;</span> 176×120 ≥ the 48pt minimum with a wide margin; in-order state = tint + 2px accent border + count badge, three redundant signals.</div>
+      </div>
+      <div style="width:400px; border:1px solid #DED6C8; border-radius:14px; background:#FFFFFF; padding:32px; display:flex; flex-direction:column; gap:20px">
+        <div style="font-size:15px; font-weight:600; line-height:20px">Numeric keypad key</div>
+        <div style="display:flex; gap:12px">
+          <div style="width:104px; height:64px; background:#FFFFFF; border:1.5px solid #DED6C8; border-radius:10px; display:grid; place-items:center; font:600 28px/1 'Spline Sans'; font-feature-settings:'tnum'; box-shadow:0 1px 2px rgba(28,25,23,0.06)">7</div>
+          <div style="width:104px; height:64px; background:#EDE7DC; border:1.5px solid #1C1917; border-radius:10px; display:grid; place-items:center; font:600 28px/1 'Spline Sans'; font-feature-settings:'tnum'; box-shadow:inset 0 2px 4px rgba(28,25,23,0.18)">7</div>
+        </div>
+        <div style="font-size:13px; font-weight:500; line-height:18px; color:#524E48">104×64 — cash-up happens one-handed at 6pm; keys take the primary-action height.</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:24px">
+      <div style="flex:1; border:1px solid #DED6C8; border-radius:14px; background:#FFFFFF; padding:32px; display:flex; flex-direction:column; gap:20px">
+        <div style="font-size:15px; font-weight:600; line-height:20px">Order line</div>
+        <div style="border-top:1px solid #DED6C8">
+          <div style="display:flex; align-items:center; gap:16px; min-height:64px; padding:10px 0; border-bottom:1px solid #F0EBE2">
+            <span style="min-width:36px; height:36px; border-radius:8px; background:#F0EBE2; font:600 17px/36px 'Spline Sans'; text-align:center; font-feature-settings:'tnum'">2×</span>
+            <span style="flex:1; display:flex; flex-direction:column; gap:2px"><span style="font-size:20px; font-weight:600; line-height:26px">Flat white</span><span style="font-size:15px; font-weight:400; line-height:20px; color:#524E48">Oat milk · Extra shot</span></span>
+            <span style="font-size:17px; font-weight:600; font-feature-settings:'tnum'">€9.60</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:16px; min-height:64px; padding:10px 0; border-bottom:1px solid #F0EBE2">
+            <span style="min-width:36px; height:36px; border-radius:8px; background:#F0EBE2; font:600 17px/36px 'Spline Sans'; text-align:center; font-feature-settings:'tnum'">1×</span>
+            <span style="flex:1; font-size:20px; font-weight:600; line-height:26px">Almond croissant</span>
+            <span style="font-size:17px; font-weight:600; font-feature-settings:'tnum'">€3.20</span>
+          </div>
+        </div>
+        <div style="font-size:13px; font-weight:500; line-height:18px; color:#524E48">Rows are 64pt-min tap targets (tap to edit). Prices tabular, right-aligned; modifiers on their own muted line, never inline with the name.</div>
+      </div>
+      <div style="width:400px; border:1px solid #DED6C8; border-radius:14px; background:#FFFFFF; padding:32px; display:flex; flex-direction:column; gap:20px">
+        <div style="font-size:15px; font-weight:600; line-height:20px">Modifier chip</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap">
+          <span style="height:48px; display:inline-flex; align-items:center; padding:0 20px; border:1.5px solid #DED6C8; background:#FFFFFF; border-radius:999px; font:600 17px/1 'Spline Sans'">Oat milk</span>
+          <span style="height:48px; display:inline-flex; align-items:center; gap:8px; padding:0 20px; border:2px solid #943109; background:#F7E8DF; border-radius:999px; font:600 17px/1 'Spline Sans'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#943109" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Oat milk</span>
+        </div>
+        <div style="font-size:13px; font-weight:500; line-height:18px; color:#524E48"><span style="font-size:11px; font-weight:600; letter-spacing:0.08em; border:1px solid #DED6C8; border-radius:999px; padding:2px 7px">CAF&Eacute;</span> Selected = tint + border weight + check glyph; readable even if colour washes out in sun.</div>
+      </div>
+    </div>
+
+    <div style="border:1px solid #DED6C8; border-radius:14px; background:#FFFFFF; padding:32px; display:flex; flex-direction:column; gap:20px">
+      <div style="font-size:15px; font-weight:600; line-height:20px">Status pills &amp; the offline indicator</div>
+      <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap">
+        <span style="height:36px; display:inline-flex; align-items:center; gap:8px; padding:0 16px; border:1.5px solid #57534E; color:#57534E; border-radius:999px; font:600 15px/1 'Spline Sans'; background:#FFFFFF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg>Syncing</span>
+        <span style="height:36px; display:inline-flex; align-items:center; gap:8px; padding:0 16px; border:1.5px dashed #57534E; color:#57534E; border-radius:999px; font:600 15px/1 'Spline Sans'; background:#FFFFFF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="3 3"><circle cx="12" cy="12" r="9"></circle></svg>Offline</span>
+        <span style="height:36px; display:inline-flex; align-items:center; gap:8px; padding:0 16px; border:1.5px solid #125E36; color:#125E36; border-radius:999px; font:600 15px/1 'Spline Sans'; background:#FFFFFF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Synced</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; height:48px; padding:0 20px; background:#F0EBE2; border-radius:10px; width:fit-content; color:#1C1917">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="3 3"><circle cx="12" cy="12" r="9"></circle></svg>
+        <span style="font-size:15px; font-weight:600">Offline</span>
+        <span style="font-size:15px; font-weight:400; color:#524E48">— orders are saved on this iPad and will sync automatically</span>
+      </div>
+      <div style="font-size:13px; font-weight:500; line-height:18px; color:#524E48; max-width:82ch"><span style="font-size:11px; font-weight:600; letter-spacing:0.08em; border:1px solid #DED6C8; border-radius:999px; padding:2px 7px">CAF&Eacute;</span> Offline uses the warm grey and a dashed ring — a texture, not an alarm. It shares no hue with warning or destructive, carries a calm sentence, and sits in the header without pulsing or flashing. Offline is Tuesday, not an incident.</div>
+    </div>
+  </section>
+
+  <section style="display:flex; flex-direction:column; gap:16px">
+    <h2 style="margin:0; font-size:28px; font-weight:600; line-height:34px">5 · tokens.json</h2>
+    <div style="font-size:15px; line-height:22px; color:#524E48">Saved as <a href="tokens.json">design/system/tokens.json</a>. If it isn't here, it can't be built.</div>
+    <pre style="margin:0; background:#1C1917; color:#FAF7F2; border-radius:14px; padding:28px 32px; font:400 14px/22px ui-monospace,Menlo,monospace; overflow:auto">{{ tokensJson }}</pre>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const swatch = hex => el => { if (el) el.style.background = hex; };
+    const colors = [
+      { role: 'surface', hex: '#FAF7F2', ratio: '—', use: 'App ground. Warm off-white, not grey — warmth without brown.' },
+      { role: 'raised', hex: '#FFFFFF', ratio: '1.05:1', use: 'Tiles, cards, keys. Lift comes from border + shadow, not colour.' },
+      { role: 'text', hex: '#1C1917', ratio: '16.37:1', use: 'Primary ink. Item names, prices, totals.' },
+      { role: 'text-muted', hex: '#524E48', ratio: '7.73:1', use: 'Modifiers, metadata. Still ≥7:1 — muted text often carries meaning.' },
+      { role: 'accent', hex: '#943109', ratio: '7.27:1', use: 'Ember. Primary actions and selection. One accent, used sparingly.' },
+      { role: 'accent-pressed', hex: '#732708', ratio: '9.72:1', use: 'Touch-down fill for primary actions.' },
+      { role: 'success', hex: '#125E36', ratio: '7.33:1', use: 'Payment confirmed, synced. Always paired with a check glyph.' },
+      { role: 'warning', hex: '#6E4800', ratio: '7.59:1', use: 'Low stock, unsent items. Always paired with a triangle glyph.' },
+      { role: 'destructive', hex: '#A3221B', ratio: '7.01:1', use: 'Void, refund, delete. Reserved — never used for offline.' },
+      { role: 'offline-neutral', hex: '#57534E', ratio: '7.14:1', use: 'Offline / syncing status. Warm grey: calm, not cautionary.' },
+      { role: 'border', hex: '#DED6C8', ratio: '1.35:1', use: 'Hairlines and tile edges. Decorative only — never load-bearing.' },
+    ].map(c => ({ ...c, swatchRef: swatch(c.hex) }));
+
+    const st = (size, weight, lh) => el => { if (el) Object.assign(el.style, { fontSize: size + 'px', fontWeight: weight, lineHeight: lh + 'px' }); };
+    const typeScale = [
+      { name: 'display', spec: '40 / 700 / 44', sample: '€148.20', use: 'Order total on the charge screen; keypad amount. Readable from a step away.', sampleRef: st(40, 700, 44) },
+      { name: 'title', spec: '28 / 600 / 34', sample: 'Morning cash-up', use: 'Screen titles, dialog headers, keypad digits.', sampleRef: st(28, 600, 34) },
+      { name: 'item', spec: '20 / 600 / 26', sample: 'Flat white', use: 'Menu tile names, order-line names, button labels. The workhorse.', sampleRef: st(20, 600, 26) },
+      { name: 'body', spec: '17 / 400 / 24', sample: 'Card reader connected and ready', use: 'Sentences: settings, dialogs, receipts.', sampleRef: st(17, 400, 24) },
+      { name: 'label', spec: '15 / 600 / 20', sample: 'OAT MILK · €0.40', use: 'Chips, pills, secondary buttons, table headers.', sampleRef: st(15, 600, 20) },
+      { name: 'caption', spec: '13 / 500 / 18', sample: 'Last synced 14:32', use: 'Timestamps and metadata only — never the sole carrier of meaning.', sampleRef: st(13, 500, 18) },
+    ];
+
+    const bar = px => el => { if (el) el.style.width = (px * 3) + 'px'; };
+    const spaces = [4, 8, 12, 16, 24, 32, 48].map((px, i) => ({ name: ['xs', 'sm', 'md', 'lg', 'xl', 'xxl', 'xxxl'][i], px, barRef: bar(px) }));
+
+    const tokensJson = JSON.stringify({
+      color: { surface: '#FAF7F2', raised: '#FFFFFF', text: '#1C1917', 'text-muted': '#524E48', accent: '#943109', 'accent-pressed': '#732708', success: '#125E36', warning: '#6E4800', destructive: '#A3221B', 'offline-neutral': '#57534E', border: '#DED6C8' },
+      type: { family: 'Spline Sans', display: { size: 40, weight: 700, lineHeight: 44 }, title: { size: 28, weight: 600, lineHeight: 34 }, item: { size: 20, weight: 600, lineHeight: 26 }, body: { size: 17, weight: 400, lineHeight: 24 }, label: { size: 15, weight: 600, lineHeight: 20 }, caption: { size: 13, weight: 500, lineHeight: 18 } },
+      space: { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 },
+      radius: { sm: 6, md: 10, lg: 14, pill: 999 },
+      touch: { min: 48, primary: 64 },
+    }, null, 2);
+
+    return { colors, typeScale, spaces, tokensJson };
+  }
+}
+</script>
+</body>
+</html>

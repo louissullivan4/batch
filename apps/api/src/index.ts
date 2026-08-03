@@ -1,0 +1,5 @@
+export { buildApp, type AppDeps } from './app'
+export { loadEnv, type Env } from './env'
+export { createPool, withTenantTx, type Pool, type PoolClient } from './db'
+export { processSyncBatch, type SyncStore, type AppendResult } from './sync/service'
+export { createPgStore } from './sync/store'

@@ -3,3 +3,16 @@
 **/.mcp.json
 setup.md
 .DS_Store
+
+# dependencies / build
+node_modules/
+dist/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# env / secrets
+.env
+.env.*
+!.env.example
+*.log

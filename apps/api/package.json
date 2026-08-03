@@ -1,0 +1,24 @@
+{
+  "name": "@batch/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@batch/domain": "workspace:*",
+    "@batch/schemas": "workspace:*",
+    "fastify": "^5.2.0",
+    "pg": "^8.13.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@batch/config": "workspace:*",
+    "@types/pg": "^8.11.0"
+  }
+}

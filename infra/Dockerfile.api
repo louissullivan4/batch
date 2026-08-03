@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+#
+# Portable API image — no Railway-specific primitives. The same image runs on Railway, Hetzner
+# (Kamal), or a laptop. For M1 the API runs straight from TypeScript source via tsx; a compiled
+# build (tsup) can replace that later for a smaller runtime without changing this contract.
+
+FROM node:22-alpine AS base
+RUN corepack enable
+WORKDIR /app
+
+FROM base AS build
+COPY . .
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+
+FROM base AS runtime
+ENV NODE_ENV=production
+COPY --from=build /app /app
+EXPOSE 3000
+# Liveness is GET /healthz; readiness (DB ping) is GET /readyz.
+CMD ["pnpm", "--filter", "@batch/api", "start"]
