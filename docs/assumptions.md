@@ -92,3 +92,14 @@ without website data being manually cleared; or WebKit source/Apple guidance con
 home-screen exemption. Then persistence can't be assumed and the Capacitor native-SQLite adapter
 becomes required, not optional.
 Status: unvalidated
+
+## A-016: Keypad amount entry is decimal, and ',' / cents-only entry are rejected as ambiguous
+Basis: `parseKeypadInput` (Sprint 2) reads what the operator types as a decimal euro amount
+(`"4.5"` → €4.50, `"450"` → €450.00) and rejects a comma, sub-cent precision, and leading/trailing
+separators rather than guessing. Irish locale writes money with a `.`; a `,` could mean either a
+decimal or a thousands group, and a cents-only mode (`450` → €4.50) collides with the decimal reading
+of the same keys — so both are refused, not disambiguated.
+Falsifier: a real till/operator that enters amounts cents-first, or a manual-price-entry screen where
+`,` is the expected decimal key. Then keypad parsing needs a mode flag (and the manual-entry screen in
+Sprint 3/4 sets it), not a single decimal grammar.
+Status: unvalidated
