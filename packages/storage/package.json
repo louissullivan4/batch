@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./opfs": "./src/opfs.ts",
+    "./opfs-worker": "./src/opfs-worker.ts",
     "./testing": "./src/testing.ts"
   },
   "main": "./src/index.ts",

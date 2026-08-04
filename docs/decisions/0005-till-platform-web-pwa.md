@@ -113,3 +113,20 @@ which is the point of keeping the seams where they are.
 - **Capacitor from day one (native SQLite now):** adds a native build target before we know we need
   it, giving up instant web deploys. We defer the cost until the durability test tells us to pay it —
   the `LocalStore` seam keeps that option a one-file change.
+
+## Implementation note (2026-08-04): the OPFS store runs in a Worker
+
+Discovered while running the till in a browser: OPFS **sync access handles**
+(`FileSystemFileHandle.prototype.createSyncAccessHandle`) — which the SQLite-wasm SAHPool VFS
+requires — are exposed **only inside a dedicated Worker**, in *every* engine (Chrome included), never
+on the main thread. Opening SAHPool on the main thread throws "Missing required OPFS APIs". The
+original `@batch/storage/opfs` adapter opened it on the main thread and so worked nowhere in a
+browser.
+
+Resolution, entirely behind the `LocalStore` seam (zero caller changes — the seam paying off exactly
+as designed): `@batch/storage/opfs-worker` runs the SAHPool database inside a Worker and proxies
+`execute` / `select` / `transaction` over `postMessage`; the shared SAHPool code lives in
+`sqlite-sahpool.ts`. The till (`apps/till/src/runtime.ts`) uses this adapter. The same worker-only
+restriction holds on the iPad (WebKit), so this is a prerequisite for the on-device Sprint 1 runs,
+not merely a desktop fix. Bonus: it keeps the SQLite write off the paint path (apps/till perf rule).
+The main-thread `./opfs` adapter is retained as the shared primitive / in-worker form.

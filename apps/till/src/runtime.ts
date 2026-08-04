@@ -1,5 +1,5 @@
 import { VAT_REDUCED_BP } from '@batch/domain'
-import { openOpfsStore } from '@batch/storage/opfs'
+import { openOpfsWorkerStore } from '@batch/storage/opfs-worker'
 import type { LocalStore } from '@batch/storage'
 import { addLine, openOrder, orderTotalMinor, tenderCash } from './order'
 import {
@@ -84,7 +84,7 @@ export async function initTill(config: TillConfig): Promise<{ identity: DeviceId
     runtime = null
   }
 
-  const store = await openOpfsStore()
+  const store = await openOpfsWorkerStore()
   await migrateLocal(store)
   const { identity } = ensureDeviceIdentity(configKv, config.tenantId)
   const transport = new HttpSyncTransport(config.apiBaseUrl, identity)

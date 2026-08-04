@@ -1,7 +1,11 @@
 {
   "extends": "@batch/config/tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    // The browser adapters (opfs, opfs-worker, opfs.worker) touch Worker/OPFS DOM globals. DOM +
+    // node here mirrors apps/till; the WebWorker lib is deliberately NOT added (it conflicts with DOM
+    // in one program), so the worker file types its global scope with a local interface instead.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
   },
   "include": ["src"]
 }
