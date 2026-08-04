@@ -16,10 +16,10 @@ import { argon2id } from 'hash-wasm'
 
 // Dev PINs for the seed roster — NOT shipped. Change these here and re-run the script to rotate them.
 const STAFF = [
-  { id: 'staff-aoife', name: 'Aoife', role: 'MANAGER', pin: '4471' },
-  { id: 'staff-cian', name: 'Cian', role: 'STAFF', pin: '2580' },
-  { id: 'staff-niamh', name: 'Niamh', role: 'STAFF', pin: '9312' },
-  { id: 'staff-darragh', name: 'Darragh', role: 'STAFF', pin: '0605' },
+  { id: 'staff-orla', name: 'Orla', role: 'MANAGER', pin: '0000' },
+  { id: 'staff-kyle', name: 'Kyle', role: 'MANAGER', pin: '0000' },
+  { id: 'staff-jerry', name: 'Jerry', role: 'MANAGER', pin: '0000' },
+  { id: 'staff-evan', name: 'Evan', role: 'STAFF', pin: '0000' },
 ]
 
 // ADR 0009 floor: m = 19456 KiB, t = 2, p = 1, 16-byte random salt, PHC output.

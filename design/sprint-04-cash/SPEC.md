@@ -41,7 +41,7 @@ separate trip.
   caption lines ("3 × €20 · 5 × €10 …") — the confirmation of what's being
   declared is on screen the whole time, not a separate dialog.
 - [Open shift — €150.00] primary 64pt. Tap → single inline confirm strip replaces
-  the button for 5s: "Declare €150.00 float, opened by Aoife?" [Declare] primary /
+  the button for 5s: "Declare €150.00 float, opened by Orla?" [Declare] primary /
   [Back] secondary. No modal.
 - Committed `ShiftOpened` + `CashDeclared` events are **irreversible** (the event
   log is append-only). A wrong float is corrected by a Paid in/out movement with

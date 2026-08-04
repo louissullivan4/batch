@@ -19,8 +19,8 @@ export interface StaffFixtureEntry {
 }
 
 export const STAFF_FIXTURE: readonly StaffFixtureEntry[] = [
-  { id: "staff-aoife", name: "Aoife", role: "MANAGER", pinPhc: "$argon2id$v=19$m=19456,t=2,p=1$cXAi81Ct/V0YDZSJCDn3+A$RvzHj95yp+rk24ZafsNeVhCM5cNgtws49VEQ//zHTBE" },
-  { id: "staff-cian", name: "Cian", role: "STAFF", pinPhc: "$argon2id$v=19$m=19456,t=2,p=1$inbsQlcL5W4JZSEZItQ8MQ$buvD9m1skfusKEtxmPFK5+e1Bdx+r5j3+P/y86fXPQs" },
-  { id: "staff-niamh", name: "Niamh", role: "STAFF", pinPhc: "$argon2id$v=19$m=19456,t=2,p=1$ru9+osY9xxonobCVlzo3tg$jfHK0KRQ1nlG300LPbRaNRN7Lj1LlK94qsG21M6gNE8" },
-  { id: "staff-darragh", name: "Darragh", role: "STAFF", pinPhc: "$argon2id$v=19$m=19456,t=2,p=1$1ESH4y5aA8FG+S7trm2H0Q$dUiKjzR1OJ8CbT+QV1mB1a2eywWMe2GolVNHyBCEEgQ" },
+  { id: "staff-orla", name: "Orla", role: "MANAGER", pinPhc: "$argon2id$v=19$m=19456,t=2,p=1$cQGr8pwnqHiea+u9Y00pcA$Zi+YpTRk3ScLJTTh/yc7/T+nH/W/soxz9Km/TVi/xDM" },
+  { id: "staff-kyle", name: "Kyle", role: "MANAGER", pinPhc: "$argon2id$v=19$m=19456,t=2,p=1$pAWrdN8ZBo5OaZIfPY/o7w$wKmlhj8d6o8tdtyt4bEuaopIwb0OPLK48jDrhrhESkg" },
+  { id: "staff-jerry", name: "Jerry", role: "MANAGER", pinPhc: "$argon2id$v=19$m=19456,t=2,p=1$fi0nwBEX95XoaZ2TsB3L+w$32aaWEu1AVyiOErr0DAyS26KDlyaMmz1lPI6C6wZ468" },
+  { id: "staff-evan", name: "Evan", role: "STAFF", pinPhc: "$argon2id$v=19$m=19456,t=2,p=1$vNVxe3N6+mKXKqzvFQ9h+w$5zj/wA2ZFHYMj9KayWbKpfkOJmyYTrFlB1re92xdpL0" },
 ]

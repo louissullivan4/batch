@@ -2,8 +2,7 @@
  * Shared header for all three screens (SPEC Screen 1 "Header", reused verbatim on tender + receipt).
  *
  * Staff identity and shifts are stubs: till auth (device token + local PIN) and real shift
- * open/close land in Sprint 4. Rendering "Aoife" / "Shift open" here matches the SPEC visual without
- * scaffolding Sprint 4 logic — tapping the shift pill only toasts that it isn't wired up yet.
+ * open/close land in Sprint 4.
  *
  * The sync pill is the at-a-glance indicator (synced / syncing / offline — never red, never a
  * banner); the full unsynced-count/age detail lives one level down, in the diagnostics drawer
