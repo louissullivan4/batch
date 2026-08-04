@@ -16,3 +16,9 @@ coverage/
 .env.*
 !.env.example
 *.log
+# Local mkcert dev-server TLS certs — machine-specific, never committed (see apps/till/certs/README.md)
+apps/till/certs/*
+!apps/till/certs/README.md
+
+# vite-plugin-pwa dev service-worker output (devOptions.enabled)
+**/dev-dist/

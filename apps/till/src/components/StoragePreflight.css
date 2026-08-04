@@ -1,0 +1,133 @@
+/*
+ * Storage-preflight panel (dev-only). High contrast, large type — readable at arm's length on an
+ * iPad on the counter. Colour is always paired with a glyph (✓ / ✗ / ·) and text, never carried
+ * alone (design system rule). Token vars only; no hex.
+ */
+
+.preflight-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  background: var(--scrim);
+}
+
+.preflight-panel {
+  width: min(680px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+  border: 2px solid var(--color-text);
+  box-shadow: var(--shadow-raised);
+}
+
+.preflight-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.preflight-header h2 {
+  margin: 0;
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+}
+
+.preflight-close,
+.preflight-refresh {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--type-label-size);
+  font-weight: 600;
+}
+
+.preflight-refresh {
+  min-height: var(--touch-primary);
+  border-color: var(--color-text);
+}
+
+.preflight-refresh:active {
+  background: var(--tint-neutral);
+  box-shadow: var(--shadow-pressed);
+}
+
+.preflight-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.preflight-row {
+  display: grid;
+  grid-template-columns: 2ch 1fr auto;
+  align-items: baseline;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--type-item-size);
+}
+
+.preflight-glyph {
+  font-weight: 700;
+  text-align: center;
+}
+
+.preflight-row[data-verdict='ok'] .preflight-glyph {
+  color: var(--color-success);
+}
+
+.preflight-row[data-verdict='warn'] .preflight-glyph {
+  color: var(--color-destructive);
+}
+
+.preflight-row[data-verdict='info'] .preflight-glyph {
+  color: var(--color-text-muted);
+}
+
+.preflight-label {
+  color: var(--color-text);
+}
+
+.preflight-value {
+  font-weight: 700;
+  text-align: right;
+  color: var(--color-text);
+}
+
+.preflight-row[data-verdict='warn'] .preflight-value {
+  color: var(--color-destructive);
+}
+
+.preflight-loading {
+  font-size: var(--type-item-size);
+  color: var(--color-text-muted);
+}
+
+/* Dev-only floating toggle that opens the panel. */
+.preflight-fab {
+  position: fixed;
+  bottom: var(--space-lg);
+  left: var(--space-lg);
+  z-index: 999;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-pill);
+  border: 1.5px dashed var(--color-offline-neutral);
+  background: var(--color-raised);
+  color: var(--color-text-muted);
+  font-size: var(--type-caption-size);
+  font-weight: 600;
+  opacity: 0.85;
+}

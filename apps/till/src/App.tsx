@@ -17,6 +17,7 @@ import { CashTender } from './screens/CashTender/CashTender'
 import { Receipt, type ClosedOrderSnapshot } from './screens/Receipt/Receipt'
 import { Toast, type ToastState } from './components/Toast'
 import { DiagnosticsDrawer } from './components/DiagnosticsDrawer'
+import { StoragePreflight } from './components/StoragePreflight'
 import type { HeaderProps, SyncPillState } from './components/Header'
 
 /**
@@ -52,6 +53,7 @@ export function App(): JSX.Element {
   const [closedSnapshot, setClosedSnapshot] = useState<ClosedOrderSnapshot | null>(null)
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
+  const [preflightOpen, setPreflightOpen] = useState(false)
   const toastIdRef = useRef(0)
 
   const showToast = useCallback((message: string) => {
@@ -195,8 +197,28 @@ export function App(): JSX.Element {
 
   const identity = currentIdentity()
 
+  // Dev-only on-device storage preflight (import.meta.env.DEV → tree-shaken from production builds).
+  // A floating toggle + a plain-text panel of the browser preconditions the Sprint 1 durability story
+  // needs, so they can be read on a physical iPad that has no devtools. Available on both the setup
+  // and till screens — secure context / SW / OPFS are worth checking before configuring the till.
+  const devOverlay = import.meta.env.DEV ? (
+    <>
+      {!preflightOpen && (
+        <button type="button" className="preflight-fab" onClick={() => setPreflightOpen(true)}>
+          Storage ▸
+        </button>
+      )}
+      {preflightOpen && <StoragePreflight onClose={() => setPreflightOpen(false)} />}
+    </>
+  ) : null
+
   if (!ready) {
-    return <Setup initialTenantId={tenantId} initialApiBaseUrl={apiBaseUrl} busy={busy} error={error} onSubmit={(c) => void connect(c)} />
+    return (
+      <>
+        <Setup initialTenantId={tenantId} initialApiBaseUrl={apiBaseUrl} busy={busy} error={error} onSubmit={(c) => void connect(c)} />
+        {devOverlay}
+      </>
+    )
   }
 
   const syncState: SyncPillState = !online ? 'offline' : syncing ? 'syncing' : 'synced'
@@ -229,6 +251,8 @@ export function App(): JSX.Element {
         busy={busy}
         onSyncNow={() => void handleSyncNow()}
       />
+
+      {devOverlay}
     </>
   )
 }
