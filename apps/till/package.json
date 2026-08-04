@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "tokens:gen": "node scripts/gen-tokens.mjs",
+    "staff:fixture:gen": "node scripts/gen-staff-fixture.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
@@ -17,6 +18,7 @@
     "@batch/schemas": "workspace:*",
     "@batch/storage": "workspace:*",
     "@fontsource/spline-sans": "^5.0.0",
+    "hash-wasm": "^4.12.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

@@ -106,6 +106,17 @@ match the real till card. Then the Sprint-6 product CRUD supplies the true value
 deleted.
 Status: unvalidated
 
+## A-018: Sprint-4 staff + PIN are a seed fixture; any staff PIN authorises, no name picker
+Basis: there is no staff CRUD yet (Sprint 6 back office). To run the Sprint-4 shift/cash screens the
+till carries a hardcoded roster (`apps/till/src/auth/staff-fixture.ts`, real Argon2id PHC hashes per
+ADR 0009) mirroring the Sprint-3 menu fixture (A-017). The authorising staff member on a movement or a
+manager-close is whoever's PIN validates against the roster — not selected from a name picker first
+(SPEC: "no name picker to falsify") — so `verifyPin` is checked against every roster entry's PHC in
+turn until one matches, which assumes PINs are unique across the roster.
+Falsifier: back office ships staff sync (then this fixture is deleted), or a real roster needs
+duplicate PINs across staff (then a name-then-PIN flow is required instead).
+Status: unvalidated
+
 ## A-016: Keypad amount entry is decimal, and ',' / cents-only entry are rejected as ambiguous
 Basis: `parseKeypadInput` (Sprint 2) reads what the operator types as a decimal euro amount
 (`"4.5"` → €4.50, `"450"` → €450.00) and rejects a comma, sub-cent precision, and leading/trailing
