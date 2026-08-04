@@ -1,0 +1,103 @@
+.order-entry {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+}
+
+.order-entry-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.order-entry-menu {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.menu-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  overflow: hidden;
+}
+
+/* Overlay confined to the tabs/grid column — the order pane (a sibling, not a child) stays outside
+   it entirely, so it is never scrimmed or covered (see OrderEntry.tsx doc comment). */
+.sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--space-xl);
+  z-index: 300;
+}
+
+.order-pane {
+  width: 384px;
+  flex-shrink: 0;
+  background: var(--color-raised);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.order-pane-lines {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.order-pane-empty {
+  padding: var(--space-xl) var(--space-lg);
+  color: var(--color-text-muted);
+  font-size: var(--type-body-size);
+}
+
+.order-pane-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.order-pane-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  color: var(--color-text);
+}
+
+.order-pane-charge {
+  min-height: var(--touch-primary);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-raised);
+  font-size: var(--type-item-size);
+  font-weight: 600;
+}
+
+.order-pane-charge:active {
+  background: var(--color-accent-pressed);
+  box-shadow: var(--shadow-pressed);
+}
+
+.order-pane-charge:disabled {
+  opacity: 0.45;
+}

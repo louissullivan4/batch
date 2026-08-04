@@ -7,6 +7,7 @@ import '@fontsource/spline-sans/latin-500.css'
 import '@fontsource/spline-sans/latin-600.css'
 import '@fontsource/spline-sans/latin-700.css'
 import './theme/tokens.css'
+import './theme/effects.css'
 import './theme/base.css'
 import { App } from './App'
 

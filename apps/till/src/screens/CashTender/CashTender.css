@@ -1,0 +1,198 @@
+.cash-tender {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+}
+
+.cash-tender-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-lg) var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.back-to-order {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 48px;
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--type-body-size);
+  font-weight: 600;
+}
+
+.back-to-order:active {
+  background: var(--tint-neutral);
+}
+
+.cash-tender-columns {
+  flex: 1;
+  display: flex;
+  gap: var(--space-xxl);
+  align-items: flex-start;
+}
+
+.cash-tender-left,
+.cash-tender-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-width: 520px;
+}
+
+.cash-tender-total-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.cash-tender-total-label {
+  font-size: var(--type-caption-size);
+  color: var(--color-text-muted);
+}
+
+.cash-tender-total-amount {
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  color: var(--color-text);
+}
+
+.tendered-readout {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  background: var(--color-raised);
+  border: 2px solid var(--color-text);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-lg);
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight);
+  line-height: var(--type-display-line);
+  color: var(--color-text);
+}
+
+.tendered-readout[data-empty='true'] {
+  opacity: 0.45;
+}
+
+.tendered-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-warning);
+  font-size: var(--type-caption-size);
+  font-weight: 600;
+  align-self: flex-end;
+}
+
+.keypad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.keypad-row {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.keypad-key {
+  flex: 1;
+  min-height: 72px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--type-title-size);
+  font-weight: 600;
+}
+
+.keypad-key:active {
+  background: var(--tint-accent);
+  box-shadow: var(--shadow-pressed);
+}
+
+.keypad-key--backspace {
+  font-size: var(--type-item-size);
+}
+
+.quick-tender {
+  min-height: var(--touch-primary);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--type-item-size);
+  font-weight: 600;
+}
+
+.quick-tender:active {
+  background: var(--tint-accent);
+  box-shadow: var(--shadow-pressed);
+}
+
+.quick-tender[data-selected='true'] {
+  background: var(--tint-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.quick-tender:disabled {
+  opacity: 0.45;
+}
+
+.change-due-card {
+  min-height: 120px;
+  border: 2px solid var(--color-text);
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+}
+
+.change-due-label {
+  font-size: var(--type-label-size);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.change-due-amount {
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight);
+  line-height: var(--type-display-line);
+  color: var(--color-text);
+}
+
+.complete-sale {
+  min-height: var(--touch-primary);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-raised);
+  font-size: var(--type-item-size);
+  font-weight: 600;
+}
+
+.complete-sale:active {
+  background: var(--color-accent-pressed);
+  box-shadow: var(--shadow-pressed);
+}
+
+.complete-sale:disabled {
+  opacity: 0.45;
+}

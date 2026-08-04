@@ -1,0 +1,35 @@
+.category-tabs {
+  display: flex;
+  gap: var(--space-md);
+  height: 48px;
+  min-height: 48px;
+  padding: var(--space-md) var(--space-lg) 0;
+  flex-shrink: 0;
+}
+
+.category-tab {
+  flex: 1;
+  min-width: 120px;
+  min-height: 48px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+  border-bottom-width: 2px;
+}
+
+.category-tab:active {
+  background: var(--tint-accent);
+  box-shadow: var(--shadow-pressed);
+}
+
+/* Selected: three redundant signals — accent text, 2px accent bottom border, tint fill (SPEC). */
+.category-tab[data-selected='true'] {
+  color: var(--color-accent);
+  background: var(--tint-accent);
+  border-bottom-color: var(--color-accent);
+  font-weight: 600;
+}

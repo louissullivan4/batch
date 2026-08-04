@@ -1,0 +1,72 @@
+.menu-tile {
+  position: relative;
+  min-height: 122px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-tile);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  text-align: left;
+  gap: var(--space-sm);
+}
+
+.menu-tile:active {
+  background: var(--tint-accent);
+  box-shadow: var(--shadow-pressed);
+}
+
+.menu-tile-name {
+  font-size: var(--type-item-size);
+  font-weight: var(--type-item-weight);
+  line-height: var(--type-item-line);
+  color: var(--color-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.menu-tile-price {
+  font-size: var(--type-label-size);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.menu-tile-oos {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--color-text-muted);
+}
+
+/* In-order: three redundant signals — tint fill, accent border, count badge. */
+.menu-tile[data-in-order='true'] {
+  background: var(--tint-accent);
+  border: 2px solid var(--color-accent);
+  padding: calc(var(--space-md) - 0.5px);
+}
+
+.menu-tile-badge {
+  position: absolute;
+  right: var(--space-sm);
+  bottom: var(--space-sm);
+  min-width: 28px;
+  height: 28px;
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-raised);
+  font-size: var(--type-label-size);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 86'd: dimmed, still tappable (toasts instead of adding) — never disabled/inert. */
+.menu-tile[data-out-of-stock='true'] {
+  opacity: 0.45;
+}

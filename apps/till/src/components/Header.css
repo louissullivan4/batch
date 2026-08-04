@@ -1,0 +1,130 @@
+.till-header {
+  height: 64px;
+  min-height: 64px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-lg);
+  flex-shrink: 0;
+}
+
+.till-header-left,
+.till-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.wordmark {
+  font-size: var(--type-item-size);
+  font-weight: 700;
+  line-height: var(--type-item-line);
+  color: var(--color-text);
+  background: none;
+  border: none;
+  padding: var(--space-sm) 0;
+  min-height: var(--touch-min);
+  display: inline-flex;
+  align-items: center;
+}
+
+.staff-name {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  color: var(--color-text);
+}
+
+/* Stub — shift lifecycle is Sprint 4. 36pt visual pill inside a 48pt hit area. */
+.shift-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  height: 36px;
+  min-height: 36px;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-success);
+  color: var(--color-success);
+  background: var(--color-raised);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+  /* Visual is 36pt tall; pad the invisible hit area out to the 48pt minimum (SPEC). */
+  margin: calc((var(--touch-min) - 36px) / -2) 0;
+  padding-top: calc((var(--touch-min) - 36px) / 2);
+  padding-bottom: calc((var(--touch-min) - 36px) / 2);
+}
+
+.shift-pill:active {
+  background: var(--tint-neutral);
+}
+
+.sync-pill-wrap {
+  position: relative;
+}
+
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  height: 36px;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-offline-neutral);
+  color: var(--color-offline-neutral);
+  background: var(--color-raised);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.sync-pill[data-state='synced'] {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  border-style: solid;
+}
+
+.sync-pill[data-state='syncing'] {
+  border-style: solid;
+}
+
+.sync-pill[data-state='offline'] {
+  border-style: dashed;
+}
+
+.sync-pill-spin {
+  animation: till-spin 1.2s linear infinite;
+}
+
+@keyframes till-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sync-popover {
+  position: absolute;
+  top: calc(100% + var(--space-sm));
+  right: 0;
+  width: 260px;
+  background: var(--color-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
+  padding: var(--space-md);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+  color: var(--color-text);
+  z-index: 400;
+}
+
+.clock {
+  font-size: var(--type-caption-size);
+  color: var(--color-text-muted);
+  min-width: 44px;
+  text-align: right;
+}

@@ -1,0 +1,28 @@
+/*
+ * Derived, token-only colour effects that `tokens.css` doesn't itself define (tints, scrims, shadow
+ * colours). Every value here is `color-mix()` over a `var(--color-*)` token — never a hex literal or
+ * bare rgba() — so the "no colour outside tokens.css" rule (Sprint 3 task 1) holds in spirit as well
+ * as by the ESLint check (which only scans .ts/.tsx). This file is additive app code, not a generated
+ * token file, so it is not on the do-not-edit list.
+ */
+
+:root {
+  /* Selected/pressed fill for tabs, tiles and options — SPEC's "#F7E8DF is accent at 8% over raised". */
+  --tint-accent: color-mix(in srgb, var(--color-accent) 8%, var(--color-raised));
+  /* Deeper tint used as the pressed-state fill on top of the default tint (inner-shadow companion). */
+  --tint-accent-pressed: color-mix(in srgb, var(--color-accent) 16%, var(--color-raised));
+  /* Neutral pressed tint for controls that don't carry the accent (secondary buttons, plain rows). */
+  --tint-neutral: color-mix(in srgb, var(--color-text) 6%, var(--color-raised));
+
+  /* Tile drop shadow: SPEC "0 1 2 rgba(28,25,23,.06)" — 28,25,23 is exactly --color-text (#1C1917). */
+  --shadow-tile: 0 1px 2px color-mix(in srgb, var(--color-text) 6%, transparent);
+  /* Pressed inner shadow: SPEC "inset 0 2 4 rgba(28,25,23,.18)", the one intermediate touch state. */
+  --shadow-pressed: inset 0 2px 4px color-mix(in srgb, var(--color-text) 18%, transparent);
+  /* Raised card shadow (sheet, change-due card). */
+  --shadow-raised: 0 8px 24px color-mix(in srgb, var(--color-text) 16%, transparent);
+
+  /* Modifier-sheet scrim: SPEC "text at 40% opacity" over the order-entry backdrop. */
+  --scrim: color-mix(in srgb, var(--color-text) 40%, transparent);
+  /* Diagnostics-drawer scrim: lighter — it's a utility panel, not a blocking flow. */
+  --scrim-light: color-mix(in srgb, var(--color-text) 24%, transparent);
+}

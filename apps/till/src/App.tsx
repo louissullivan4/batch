@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import {
   currentIdentity,
@@ -7,59 +7,34 @@ import {
   reconcile,
   refreshStats,
   syncNow,
-  takeSampleOrder,
-  type SampleOrderResult,
   type TillConfig,
 } from './runtime'
-import {
-  uuidv7,
-  type LocalStats,
-  type ReconcileReport,
-  type SyncOutcome,
-} from './sync'
+import { uuidv7, type LocalStats, type ReconcileReport, type SyncOutcome } from './sync'
+import { useOrder } from './useOrder'
+import { Setup } from './screens/Setup'
+import { OrderEntry } from './screens/OrderEntry/OrderEntry'
+import { CashTender } from './screens/CashTender/CashTender'
+import { Receipt, type ClosedOrderSnapshot } from './screens/Receipt/Receipt'
+import { Toast, type ToastState } from './components/Toast'
+import { DiagnosticsDrawer } from './components/DiagnosticsDrawer'
+import type { HeaderProps, SyncPillState } from './components/Header'
 
 /**
- * Sprint 1 harness for `apps/till`. NOT the designed barista UI (that lands gated in Sprint 3, behind
- * DP-01/DP-02) — this screen exists only to prove the sync core and order builders are wired: a real
- * `LocalStore` write path, a real reconcile-on-startup, a real (opt-in) sync to the API.
+ * Sprint 3 till: the designed barista UI (Screens 1-4), replacing the Sprint 1 harness. Screen
+ * routing is in-memory state — `order → tender → receipt` — never a URL router; a barista never
+ * needs a back button that isn't the SPEC's own "Back to order".
+ *
+ * Staff auth is a Sprint 4 concern (device token + local PIN, root CLAUDE.md non-negotiable #5), so
+ * the operator identity here is a static stub, not a login. Shifts are also Sprint 4; the header's
+ * shift pill is a non-functional stub that toasts rather than opening real shift actions.
  */
 
-const DEFAULT_API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:3000'
+// Sprint 4 will replace this with the authenticated staff member from the local PIN check.
+const STAFF_NAME_STUB = 'Aoife'
 
-function formatEuroMinor(minor: bigint): string {
-  const negative = minor < 0n
-  const abs = negative ? -minor : minor
-  const whole = abs / 100n
-  const cents = abs % 100n
-  return `${negative ? '-' : ''}€${whole.toString()}.${cents.toString().padStart(2, '0')}`
-}
+const DEFAULT_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:3000'
 
-function formatAge(iso: string | null): string {
-  if (iso === null) return 'fully synced'
-  const ms = Date.now() - Date.parse(iso)
-  if (ms < 1000) return 'just now'
-  const seconds = Math.floor(ms / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m`
-  const hours = Math.floor(minutes / 60)
-  return `${hours}h`
-}
-
-const RECONCILE_LABEL: Record<ReconcileReport['status'], string> = {
-  'first-run': 'First run — device registered',
-  healthy: 'Healthy — local store intact',
-  'evicted-recovered': 'Recovered — store was wiped, resynced from server',
-  'evicted-offline': 'Suspected loss — offline, cannot confirm yet',
-}
-
-const RECONCILE_TONE: Record<ReconcileReport['status'], 'neutral' | 'good' | 'warn'> = {
-  'first-run': 'neutral',
-  healthy: 'good',
-  'evicted-recovered': 'warn',
-  'evicted-offline': 'warn',
-}
+type Screen = 'order' | 'tender' | 'receipt'
 
 export function App(): JSX.Element {
   const [tenantId, setTenantId] = useState('')
@@ -68,11 +43,28 @@ export function App(): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
+  const [syncing, setSyncing] = useState(false)
   const [reconcileReport, setReconcileReport] = useState<ReconcileReport | null>(null)
   const [stats, setStats] = useState<LocalStats | null>(null)
   const [lastSync, setLastSync] = useState<SyncOutcome | null>(null)
-  const [lastSample, setLastSample] = useState<SampleOrderResult | null>(null)
-  const [tapToUpdateMs, setTapToUpdateMs] = useState<number | null>(null)
+
+  const [screen, setScreen] = useState<Screen>('order')
+  const [closedSnapshot, setClosedSnapshot] = useState<ClosedOrderSnapshot | null>(null)
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const toastIdRef = useRef(0)
+
+  const showToast = useCallback((message: string) => {
+    toastIdRef.current += 1
+    setToast({ id: toastIdRef.current, message })
+  }, [])
+
+  const order = useOrder({
+    onCommitError: () =>
+      // SPEC: a full-storage write failure is a toast, never a blocking dialog — the sale stays in
+      // memory (useOrder keeps the optimistic state regardless of what happened to the write).
+      showToast("Couldn't save that change — it's kept on screen, but check storage space."),
+  })
 
   // Connectivity is informational only — offline is normal operation (root CLAUDE.md), never an error.
   useEffect(() => {
@@ -103,7 +95,7 @@ export function App(): JSX.Element {
   }, [])
 
   // Auto-connect on load if this device was configured in a previous session — a barista should
-  // never have to re-type the tenant id every shift.
+  // never have to re-type the tenant id every shift. Runs once on mount only.
   useEffect(() => {
     const stored = loadStoredConfig()
     if (stored) {
@@ -113,177 +105,121 @@ export function App(): JSX.Element {
     } else {
       setTenantId(uuidv7())
     }
-    // Runs once on mount only.
+    // Runs once on mount only — re-running on `connect` identity changes would re-trigger auto-connect.
   }, [])
 
-  const handleConnectSubmit = (event: FormEvent): void => {
-    event.preventDefault()
-    void connect({ tenantId, apiBaseUrl })
-  }
-
-  const handleTakeSample = async (): Promise<void> => {
-    const tapStart = performance.now()
-    setBusy(true)
-    setError(null)
-    try {
-      const result = await takeSampleOrder()
-      setLastSample(result)
+  // Drain the outbox per event when online (apps/till/CLAUDE.md write path), triggered from the UI
+  // layer: each committed order event bumps `order.events.length`, which is the per-event drain
+  // signal. Also re-drains whenever connectivity is regained. Never awaited by anything on the order
+  // path — this effect runs after the paint, not before it.
+  useEffect(() => {
+    if (!ready || order.events.length === 0) return
+    let cancelled = false
+    void (async () => {
       setStats(await refreshStats())
-      setTapToUpdateMs(performance.now() - tapStart)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setBusy(false)
+      if (!online) return
+      setSyncing(true)
+      try {
+        const outcome = await syncNow()
+        if (!cancelled) setLastSync(outcome)
+      } finally {
+        if (!cancelled) setSyncing(false)
+      }
+      if (!cancelled) setStats(await refreshStats())
+    })()
+    return () => {
+      cancelled = true
     }
-  }
+  }, [ready, order.events.length, online])
 
-  const handleSyncNow = async (): Promise<void> => {
+  const openDiagnostics = useCallback(() => {
+    setDiagnosticsOpen(true)
+    void (async () => setStats(await refreshStats()))()
+  }, [])
+
+  const handleSyncNow = useCallback(async (): Promise<void> => {
     setBusy(true)
-    setError(null)
     try {
       const outcome = await syncNow()
       setLastSync(outcome)
       setStats(await refreshStats())
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setBusy(false)
     }
-  }
+  }, [])
+
+  const handleCharge = useCallback(() => {
+    if (!order.isEmpty) setScreen('tender')
+  }, [order.isEmpty])
+
+  const handleBackToOrder = useCallback(() => setScreen('order'), [])
+
+  const handleCompleteCashSale = useCallback(
+    async (tenderedMinor: bigint): Promise<void> => {
+      const preTotals = order.totals
+      const preLines = order.lines
+      await order.completeCashSale(tenderedMinor)
+      if (preTotals) {
+        const changeMinor = tenderedMinor - preTotals.totalMinor
+        setClosedSnapshot({
+          lines: preLines,
+          totals: {
+            ...preTotals,
+            tenderedMinor: preTotals.tenderedMinor + tenderedMinor,
+            cashTenderedMinor: preTotals.cashTenderedMinor + tenderedMinor,
+            changeMinor: preTotals.changeMinor + changeMinor,
+            balanceMinor: preTotals.balanceMinor - tenderedMinor,
+          },
+          closedAt: new Date(),
+        })
+      }
+      setScreen('receipt')
+    },
+    [order],
+  )
+
+  const handleNewSale = useCallback(() => {
+    order.reset()
+    setClosedSnapshot(null)
+    setScreen('order')
+  }, [order])
 
   const identity = currentIdentity()
 
-  return (
-    <div className="till-app">
-      <header className="till-header">
-        <h1>Batch Till — Sprint 1 harness</h1>
-        <div className="connectivity" data-online={online}>
-          <span className="dot" aria-hidden="true" />
-          {online ? 'Online' : 'Offline (normal)'}
-        </div>
-      </header>
+  if (!ready) {
+    return <Setup initialTenantId={tenantId} initialApiBaseUrl={apiBaseUrl} busy={busy} error={error} onSubmit={(c) => void connect(c)} />
+  }
 
-      {error && (
-        <div className="inline-error" role="alert">
-          {error}
-        </div>
+  const syncState: SyncPillState = !online ? 'offline' : syncing ? 'syncing' : 'synced'
+  const headerProps: HeaderProps = {
+    staffName: STAFF_NAME_STUB,
+    syncState,
+    onOpenDiagnostics: openDiagnostics,
+    onShiftTap: () => showToast('Shifts arrive in Sprint 4'),
+  }
+
+  return (
+    <>
+      {screen === 'order' && <OrderEntry order={order} headerProps={headerProps} onCharge={handleCharge} onToast={showToast} />}
+
+      {screen === 'tender' && order.totals && (
+        <CashTender totalMinor={order.totals.totalMinor} headerProps={headerProps} onBack={handleBackToOrder} onComplete={handleCompleteCashSale} />
       )}
 
-      <section>
-        <h2>Device configuration</h2>
-        <form onSubmit={handleConnectSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label>
-            Tenant ID (UUID)
-            <input
-              value={tenantId}
-              onChange={(e) => setTenantId(e.target.value)}
-              placeholder="00000000-0000-0000-0000-000000000000"
-              spellCheck={false}
-            />
-          </label>
-          <label>
-            API base URL
-            <input
-              value={apiBaseUrl}
-              onChange={(e) => setApiBaseUrl(e.target.value)}
-              placeholder="http://localhost:3000"
-              spellCheck={false}
-            />
-          </label>
-          <div className="actions">
-            <button type="submit" disabled={busy || !tenantId || !apiBaseUrl}>
-              {ready ? 'Reconnect' : 'Connect'}
-            </button>
-          </div>
-        </form>
-        {identity && (
-          <div className="status-card">
-            <span className="label">Device ID</span>
-            <span className="value">{identity.deviceId}</span>
-          </div>
-        )}
-      </section>
+      {screen === 'receipt' && closedSnapshot && <Receipt snapshot={closedSnapshot} headerProps={headerProps} onNewSale={handleNewSale} />}
 
-      <section>
-        <h2>Order path (no network)</h2>
-        <div className="actions">
-          <button onClick={() => void handleTakeSample()} disabled={!ready || busy}>
-            Take sample order
-          </button>
-          <button className="secondary" onClick={() => void handleSyncNow()} disabled={!ready || busy}>
-            Sync now
-          </button>
-        </div>
-        {lastSample && (
-          <div className="status-grid">
-            <div className="status-card">
-              <span className="label">Last order total</span>
-              <span className="value">{formatEuroMinor(lastSample.totalMinor)}</span>
-            </div>
-            <div className="status-card">
-              <span className="label">Change given</span>
-              <span className="value">{formatEuroMinor(lastSample.changeMinor)}</span>
-            </div>
-            <div className="status-card">
-              <span className="label">Local commit latency (budget &lt;200ms)</span>
-              <span className="value">{lastSample.commitMs.toFixed(1)}ms</span>
-            </div>
-            {tapToUpdateMs !== null && (
-              <div className="status-card">
-                <span className="label">Tap-to-render latency (budget &lt;100ms)</span>
-                <span className="value">{tapToUpdateMs.toFixed(1)}ms</span>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
 
-      <section>
-        <h2>Status</h2>
-        <div className="status-grid">
-          <div className="status-card">
-            <span className="label">Startup reconcile</span>
-            {reconcileReport ? (
-              <span className="badge" data-tone={RECONCILE_TONE[reconcileReport.status]}>
-                {RECONCILE_LABEL[reconcileReport.status]}
-              </span>
-            ) : (
-              <span className="value">not run</span>
-            )}
-          </div>
-          {reconcileReport && (
-            <div className="status-card">
-              <span className="label">Recovered / persisted</span>
-              <span className="value">
-                {reconcileReport.recovered} recovered · persist(){' '}
-                {reconcileReport.persisted === null ? 'n/a' : String(reconcileReport.persisted)}
-              </span>
-            </div>
-          )}
-          <div className="status-card">
-            <span className="label">Unsynced events</span>
-            <span className="value">{stats ? stats.unsyncedCount : '—'}</span>
-          </div>
-          <div className="status-card">
-            <span className="label">Oldest unsynced age</span>
-            <span className="value">{stats ? formatAge(stats.oldestUnsyncedAt) : '—'}</span>
-          </div>
-          <div className="status-card">
-            <span className="label">Local event count</span>
-            <span className="value">{stats ? stats.eventCount : '—'}</span>
-          </div>
-          <div className="status-card">
-            <span className="label">Last sync outcome</span>
-            <span className="value">
-              {lastSync
-                ? lastSync.offline
-                  ? 'Offline — queued'
-                  : `${lastSync.synced} synced, ${lastSync.rejected} rejected, ${lastSync.remaining} remaining`
-                : 'not run yet'}
-            </span>
-          </div>
-        </div>
-      </section>
-    </div>
+      <DiagnosticsDrawer
+        open={diagnosticsOpen}
+        onClose={() => setDiagnosticsOpen(false)}
+        identity={identity}
+        reconcileReport={reconcileReport}
+        stats={stats}
+        lastSync={lastSync}
+        busy={busy}
+        onSyncNow={() => void handleSyncNow()}
+      />
+    </>
   )
 }
