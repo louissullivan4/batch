@@ -14,7 +14,8 @@
     "typecheck": "turbo run typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "schema:dump": "pg_dump --schema-only --no-owner --no-privileges \"$DATABASE_PUBLIC_URL\" > docs/schema.sql"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

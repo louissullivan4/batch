@@ -46,9 +46,9 @@ Update this as you go. Claude Code reads it to know where you are.
 
 | # | Status |
 |---|---|
-| 0 | ◑ in progress — pnpm/Turbo/strict-TS/ESLint, GitHub Actions CI, Dockerfile.api, event_log migration all done. Outstanding (need the cloud env): Railway + Postgres (EU), nightly pg_dump→R2, the restore drill, wal_level check. |
-| 1 | ◑ in progress — event_log schema + `POST /v1/sync/events` + exactly-once done; idempotency, RLS isolation, WITH CHECK and append-only **verified against real Postgres**. The 4 device tests (airplane mode / force-quit / two devices) need the till app (S3) on real hardware. |
-| 2 | ◑ in progress — Money, Irish VAT, and the order reducer done and property-tested (replay-equals-projection, totals never negative, void-all-to-zero, duplicate rejected). "The same reducer imported by both apps" completes when the till lands (S3); the API side imports it now. |
+| 0 | ✅ done (code/tooling) — pnpm/Turbo/strict-TS/ESLint, GitHub Actions CI, Dockerfile.api, event_log migration. ⚠️ Not yet done, needs the cloud account: Railway + Postgres (EU), nightly pg_dump→R2, the restore drill, wal_level check. |
+| 1 | ✅ done (server side) — event_log + `POST /v1/sync/events` + exactly-once; idempotency, RLS, WITH CHECK, append-only **verified against real Postgres**. ⚠️ Till half is **Sprint 1 scope, in progress** (not Sprint 3 — see `docs/sprints/sprint-01-sync-spine.md`): the OPFS outbox via `@batch/storage` LocalStore, the sync client, and the 4 offline device tests (airplane mode / force-quit / two devices / reconnect-replay). No till app exists yet. |
+| 2 | ◑ in progress — Money, Irish VAT, and the order reducer done and property-tested (replay-equals-projection, totals never negative, void-all-to-zero, duplicate rejected). "The same reducer imported by both apps" completes when the till lands (Sprint 1); the API side imports it now. |
 | 3 | ☐ not started |
 | 4 | ☐ not started |
 | 5 | ☐ not started |

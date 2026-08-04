@@ -78,3 +78,17 @@ Status: unvalidated
 Basis: my time behind the counter — a submenu costs a screen transition mid-rush.
 Falsifier: watch 3 baristas use both; if the sheet is slower for more than one, revisit. (Sprint 3.)
 Status: unvalidated
+
+## A-015: A daily-used, home-screen-installed PWA is effectively exempt from ITP 7-day eviction
+Basis: WebKit's `ResourceLoadStatisticsStore` expires against `operatingDatesWindowShort { 7 }` counted
+in *operating days with no user interaction on the origin*, not calendar days — a till tapped every
+morning never accrues a qualifying day. Apple's March 2020 WebKit post additionally stated home-screen
+web-app first-party data is not expected to be deleted (recalled, not cited). So the real durability
+risks are storage pressure, manual "Clear Website Data", quota-exceeded, OPFS/SQLite-wasm iOS bugs,
+and device restore — not the 7-day timer. Drives [ADR 0005](decisions/0005-till-platform-web-pwa.md):
+the mitigation is eviction *detection* (canary + server high-water reconciliation), not prevention.
+Falsifier: the Sprint 1 durability test loses events on a home-screen-installed, daily-opened iPad
+without website data being manually cleared; or WebKit source/Apple guidance contradicts the
+home-screen exemption. Then persistence can't be assumed and the Capacitor native-SQLite adapter
+becomes required, not optional.
+Status: unvalidated

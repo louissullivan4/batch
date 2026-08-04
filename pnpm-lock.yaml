@@ -85,6 +85,15 @@ importers:
         specifier: workspace:*
         version: link:../config
 
+  packages/storage:
+    devDependencies:
+      '@batch/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+
 packages:
 
   '@esbuild/aix-ppc64@0.28.1':
