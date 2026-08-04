@@ -1,7 +1,7 @@
 import type { OrderEvent } from '@batch/domain'
 import { OrderEventSchema, toJson } from '@batch/schemas'
 import type { PoolClient } from '../db'
-import type { AppendResult, SyncStore } from './service'
+import type { AppendResult, PulledEvent, SyncStore } from './service'
 
 /**
  * Postgres-backed `SyncStore`, bound to a client that already ran `set_config('app.tenant_id', …)`.
@@ -15,6 +15,11 @@ interface EventRow {
   event_type: string
   payload: unknown
   occurred_at: Date
+}
+
+interface PulledRow extends EventRow {
+  seq: string
+  aggregate_type: string
 }
 
 function rowToEvent(row: EventRow): OrderEvent {
@@ -78,6 +83,35 @@ export function createPgStore(client: PoolClient): SyncStore {
         throw new Error(`append: conflict on ${event.eventId} but no existing row is visible`)
       }
       return { inserted: false, seq: existing }
+    },
+
+    async deviceHighWater(deviceId): Promise<{ maxSeq: bigint | null; eventCount: number }> {
+      // Per-device, tenant-scoped by RLS. The till compares this against its local store on startup.
+      const res = await client.query<{ max_seq: string | null; n: string }>(
+        'select max(seq)::text as max_seq, count(*)::text as n from event_log where device_id = $1',
+        [deviceId],
+      )
+      const row = res.rows[0]
+      return {
+        maxSeq: row && row.max_seq !== null ? BigInt(row.max_seq) : null,
+        eventCount: row ? Number(row.n) : 0,
+      }
+    },
+
+    async loadDeviceEventsAfter(deviceId, afterSeq, limit): Promise<PulledEvent[]> {
+      const res = await client.query<PulledRow>(
+        `select seq::text as seq, aggregate_type, event_id, aggregate_id, event_type, payload, occurred_at
+           from event_log
+          where device_id = $1 and seq > $2
+          order by seq
+          limit $3`,
+        [deviceId, afterSeq.toString(), limit],
+      )
+      return res.rows.map((row) => ({
+        seq: BigInt(row.seq),
+        aggregateType: row.aggregate_type,
+        event: rowToEvent(row),
+      }))
     },
   }
 }

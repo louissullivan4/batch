@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import type { OrderEvent } from '@batch/domain'
 import type { SyncRequest } from '@batch/schemas'
-import { processSyncBatch, type AppendResult, type SyncStore } from './service'
+import {
+  getDeviceHighWater,
+  processSyncBatch,
+  pullDeviceEvents,
+  type AppendResult,
+  type PulledEvent,
+  type SyncStore,
+} from './service'
 
 const OID = '0190b4c2-1e3a-7c8d-8f2a-1b2c3d4e5f60'
 const OCC = '2026-08-03T10:00:00.000Z'
@@ -11,7 +18,7 @@ const DEVICE = '0190b4c2-1e3a-7000-8000-0000000000de'
 class FakeStore implements SyncStore {
   private seq = 0n
   private byEventId = new Map<string, { seq: bigint; event: OrderEvent; aggregateType: string }>()
-  private order: { seq: bigint; event: OrderEvent; type: string; id: string }[] = []
+  private order: { seq: bigint; event: OrderEvent; type: string; id: string; device: string }[] = []
 
   async loadAggregateEvents(aggregateType: string, aggregateId: string): Promise<OrderEvent[]> {
     return this.order
@@ -32,8 +39,22 @@ class FakeStore implements SyncStore {
     this.seq += 1n
     const seq = this.seq
     this.byEventId.set(event.eventId, { seq, event, aggregateType: meta.aggregateType })
-    this.order.push({ seq, event, type: meta.aggregateType, id: event.aggregateId })
+    this.order.push({ seq, event, type: meta.aggregateType, id: event.aggregateId, device: meta.deviceId })
     return { inserted: true, seq }
+  }
+
+  async deviceHighWater(deviceId: string): Promise<{ maxSeq: bigint | null; eventCount: number }> {
+    const mine = this.order.filter((r) => r.device === deviceId)
+    const maxSeq = mine.reduce<bigint | null>((m, r) => (m === null || r.seq > m ? r.seq : m), null)
+    return { maxSeq, eventCount: mine.length }
+  }
+
+  async loadDeviceEventsAfter(deviceId: string, afterSeq: bigint, limit: number): Promise<PulledEvent[]> {
+    return this.order
+      .filter((r) => r.device === deviceId && r.seq > afterSeq)
+      .sort((a, b) => (a.seq < b.seq ? -1 : 1))
+      .slice(0, limit)
+      .map((r) => ({ seq: r.seq, aggregateType: r.type, event: r.event }))
   }
 }
 
@@ -195,5 +216,51 @@ describe('processSyncBatch', () => {
     const res = await processSyncBatch(store, DEVICE, { events: [item] })
     expect(res.results[0]!.status).toBe('rejected')
     expect(res.results[0]!.error).toBe('UNSUPPORTED_AGGREGATE')
+  })
+})
+
+describe('device high-water and down-pull', () => {
+  const OTHER_DEVICE = '0190b4c2-1e3a-7000-8000-0000000000df'
+
+  it('reports the device high-water mark; another device sees nothing', async () => {
+    const store = new FakeStore()
+    await processSyncBatch(store, DEVICE, req(order(open('e0')), order(line('e1', 500n))))
+
+    const hw = await getDeviceHighWater(store, DEVICE)
+    expect(hw.eventCount).toBe(2)
+    expect(hw.maxSeq).toBe('2')
+
+    const none = await getDeviceHighWater(store, OTHER_DEVICE)
+    expect(none).toEqual({ maxSeq: null, eventCount: 0 })
+  })
+
+  it('pulls the device events back in server order with money as strings on the wire', async () => {
+    const store = new FakeStore()
+    await processSyncBatch(store, DEVICE, req(order(open('e0')), order(line('e1', 500n))))
+
+    const page = await pullDeviceEvents(store, DEVICE, 0n, 500)
+    expect(page.events.map((e) => e.seq)).toEqual(['1', '2'])
+    expect(page.nextAfterSeq).toBeNull()
+    const lineEvent = page.events[1]?.event
+    expect(lineEvent?.eventType).toBe('LineAdded')
+    // Money crossed back as a decimal string, never a JSON number.
+    expect((lineEvent?.payload as { unitPriceMinor: string }).unitPriceMinor).toBe('500')
+  })
+
+  it('pages: a full page reports nextAfterSeq, the last page reports null', async () => {
+    const store = new FakeStore()
+    await processSyncBatch(store, DEVICE, req(order(open('e0')), order(line('e1', 500n))))
+
+    const first = await pullDeviceEvents(store, DEVICE, 0n, 1)
+    expect(first.events.map((e) => e.seq)).toEqual(['1'])
+    expect(first.nextAfterSeq).toBe('1') // page filled — more may follow
+
+    const second = await pullDeviceEvents(store, DEVICE, 1n, 1)
+    expect(second.events.map((e) => e.seq)).toEqual(['2'])
+    expect(second.nextAfterSeq).toBe('2')
+
+    const third = await pullDeviceEvents(store, DEVICE, 2n, 1)
+    expect(third.events).toEqual([])
+    expect(third.nextAfterSeq).toBeNull()
   })
 })

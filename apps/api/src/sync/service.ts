@@ -5,7 +5,15 @@ import {
   type OrderEvent,
   type OrderState,
 } from '@batch/domain'
-import type { SyncRequest, SyncResponse, SyncResult } from '@batch/schemas'
+import {
+  toWire,
+  type AggregateType,
+  type SyncHighWaterResponse,
+  type SyncPullResponse,
+  type SyncRequest,
+  type SyncResponse,
+  type SyncResult,
+} from '@batch/schemas'
 
 /**
  * The sync algorithm, independent of Postgres. The route wires a `SyncStore` backed by a tenant
@@ -19,6 +27,13 @@ export interface AppendResult {
   readonly seq: bigint
 }
 
+/** One event pulled back down to a till during resync. Tenant + device scoped. */
+export interface PulledEvent {
+  readonly seq: bigint
+  readonly aggregateType: string
+  readonly event: OrderEvent
+}
+
 export interface SyncStore {
   /** Replay a single aggregate's already-persisted events, in server order. Tenant-scoped. */
   loadAggregateEvents(aggregateType: string, aggregateId: string): Promise<OrderEvent[]>
@@ -29,6 +44,41 @@ export interface SyncStore {
   ): Promise<AppendResult>
   /** The seq of an already-stored event, or null. Tenant-scoped. */
   findSeq(eventId: string): Promise<bigint | null>
+  /** The device's high-water mark: greatest seq and event count. Tenant-scoped by RLS. */
+  deviceHighWater(deviceId: string): Promise<{ maxSeq: bigint | null; eventCount: number }>
+  /** The device's own events after `afterSeq`, in server order, capped at `limit`. */
+  loadDeviceEventsAfter(deviceId: string, afterSeq: bigint, limit: number): Promise<PulledEvent[]>
+}
+
+/** `GET /v1/sync/highwater` — the device's high-water mark, shaped for the wire. */
+export async function getDeviceHighWater(
+  store: SyncStore,
+  deviceId: string,
+): Promise<SyncHighWaterResponse> {
+  const { maxSeq, eventCount } = await store.deviceHighWater(deviceId)
+  return { maxSeq: maxSeq === null ? null : maxSeq.toString(), eventCount }
+}
+
+/**
+ * `GET /v1/sync/events` — a bounded down-pull of the device's own events, for rebuilding an evicted
+ * till. `nextAfterSeq` is the last seq returned when the page filled, else null (drained). Money is
+ * serialised back to strings via `toWire`.
+ */
+export async function pullDeviceEvents(
+  store: SyncStore,
+  deviceId: string,
+  afterSeq: bigint,
+  limit: number,
+): Promise<SyncPullResponse> {
+  const rows = await store.loadDeviceEventsAfter(deviceId, afterSeq, limit)
+  const events = rows.map((row) => ({
+    seq: row.seq.toString(),
+    aggregateType: row.aggregateType as AggregateType,
+    event: toWire(row.event) as SyncPullResponse['events'][number]['event'],
+  }))
+  const last = rows[rows.length - 1]
+  const nextAfterSeq = last && rows.length === limit ? last.seq.toString() : null
+  return { events, nextAfterSeq }
 }
 
 function reject(eventId: string, error: string): SyncResult {

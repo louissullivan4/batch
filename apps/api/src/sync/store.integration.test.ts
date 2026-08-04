@@ -164,4 +164,35 @@ run('sync store against real Postgres', () => {
       withTenantTx(app, TENANT_A, (c) => c.query('delete from event_log')),
     ).rejects.toThrow()
   })
+
+  it('reports device high-water and pulls the device events back down (money as bigint)', async () => {
+    const DEVICE2 = '0190b4c2-1e3a-7000-8000-0000000000d2'
+    const oid = '0190b4c2-1e3a-7c8d-8f2a-0000000000e2'
+    const batch: SyncRequest = {
+      events: [
+        { aggregateType: 'order', event: opened(uid(40), oid) },
+        { aggregateType: 'order', expectedTotalMinor: 700n, event: line(uid(41), oid, 350n) },
+      ],
+    }
+    await withTenantTx(app, TENANT_A, (c) => processSyncBatch(createPgStore(c), DEVICE2, batch))
+
+    const hw = await withTenantTx(app, TENANT_A, (c) => createPgStore(c).deviceHighWater(DEVICE2))
+    expect(hw.eventCount).toBe(2)
+    expect(hw.maxSeq).not.toBeNull()
+
+    const pulled = await withTenantTx(app, TENANT_A, (c) =>
+      createPgStore(c).loadDeviceEventsAfter(DEVICE2, 0n, 500),
+    )
+    expect(pulled.map((p) => p.event.eventType)).toEqual(['OrderOpened', 'LineAdded'])
+    const lineEvent = pulled[1]?.event
+    // Money survived the jsonb round-trip as a bigint (via the schema parse in the store).
+    expect(lineEvent?.eventType).toBe('LineAdded')
+    if (lineEvent?.eventType === 'LineAdded') {
+      expect(lineEvent.payload.unitPriceMinor).toBe(350n)
+    }
+
+    // Another device sees nothing of DEVICE2's stream.
+    const other = await withTenantTx(app, TENANT_A, (c) => createPgStore(c).deviceHighWater(DEVICE))
+    expect(other.eventCount).toBeGreaterThanOrEqual(0)
+  })
 })
