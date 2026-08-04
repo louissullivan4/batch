@@ -6,9 +6,9 @@ requires_design: true
 design_assets:
   - design/system/tokens.json
   - design/sprint-03-till/SPEC.md
-  - design/sprint-03-till/order-entry.png
-  - design/sprint-03-till/modifier-sheet.png
-  - design/sprint-03-till/cash-tender.png
+  - design/sprint-03-till/reference/screen-1-order-entry.png
+  - design/sprint-03-till/reference/screen-2-modifier-sheet.png
+  - design/sprint-03-till/reference/screen-3-cash-tender.png
 design_prompt: docs/design-prompts/DP-02-order-entry.md
 estimate_hours: 40-50
 ---
