@@ -38,15 +38,15 @@ export async function syncOutbox(store: LocalStore, transport: SyncTransport): P
     try {
       response = await transport.postEvents(batch)
     } catch {
-      // Offline (or the server is unreachable). Everything from here stays queued.
-      const remaining = queued.length - synced - rejected
-      return { synced, rejected, remaining, offline: true }
+      // Offline (or the server is unreachable). Everything not yet synced stays queued (including
+      // any already rejected this drain — they remain in the outbox).
+      return { synced, rejected, remaining: queued.length - synced, offline: true }
     }
 
     const [result] = response.results
     if (!result) continue
     if (result.status === 'accepted' || result.status === 'duplicate') {
-      await markSynced(store, result.eventId, result.seq ?? '')
+      await markSynced(store, result.eventId, result.seq)
       synced += 1
     } else {
       await markRejected(store, result.eventId, result.error ?? 'rejected')
@@ -54,7 +54,8 @@ export async function syncOutbox(store: LocalStore, transport: SyncTransport): P
     }
   }
 
-  return { synced, rejected, remaining: rejected, offline: false }
+  // Everything not acknowledged is still queued — rejected rows and any skipped by the guard above.
+  return { synced, rejected, remaining: queued.length - synced, offline: false }
 }
 
 /** HTTP implementation of the transport. Adds the device/tenant headers to every request. */

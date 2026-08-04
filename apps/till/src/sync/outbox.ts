@@ -124,7 +124,7 @@ export async function listUnsynced(store: LocalStore): Promise<QueuedEvent[]> {
 export async function markSynced(
   store: LocalStore,
   eventId: string,
-  serverSeq: string,
+  serverSeq: string | null,
   now: string = new Date().toISOString(),
 ): Promise<void> {
   await store.execute('update outbox set synced_at = ?, server_seq = ?, last_error = null where event_id = ?', [

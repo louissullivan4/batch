@@ -72,29 +72,54 @@ export async function openOpfsStore(options: OpfsStoreOptions = {}): Promise<Loc
     }
   }
 
-  const executor: Executor = {
+  const runSelect = <T extends Row>(sql: string, params: readonly SqlValue[]): readonly T[] => {
+    const rows: Row[] = []
+    db.exec({ sql, bind: params, rowMode: 'object', returnValue: 'resultRows', resultRows: rows })
+    return rows as unknown as readonly T[]
+  }
+
+  // Serialise every top-level operation onto one promise chain. SAHPool is a single synchronous
+  // handle, and `transaction` yields at each `await work(...)`; without this, a concurrent top-level
+  // `execute` (e.g. a background drain's `markSynced`) could run inside another op's open BEGIN and be
+  // rolled back with it. Queuing makes each op — and a whole transaction — atomic against the others.
+  const noop = (): void => undefined
+  let tail: Promise<unknown> = Promise.resolve()
+  const serialize = <T>(op: () => Promise<T>): Promise<T> => {
+    const result = tail.then(op, op)
+    tail = result.then(noop, noop)
+    return result
+  }
+
+  // The executor handed to a transaction's `work`: it runs RAW (no re-serialising), because the
+  // transaction already holds the lock for its whole body. Re-locking here would deadlock.
+  const txExecutor: Executor = {
     execute(sql, params = []) {
       return Promise.resolve(run(sql, params))
     },
     select<T extends Row = Row>(sql: string, params: readonly SqlValue[] = []) {
-      const rows: Row[] = []
-      db.exec({ sql, bind: params, rowMode: 'object', returnValue: 'resultRows', resultRows: rows })
-      return Promise.resolve(rows as unknown as readonly T[])
+      return Promise.resolve(runSelect<T>(sql, params))
     },
   }
 
   return {
-    ...executor,
-    async transaction<T>(work: (tx: Executor) => Promise<T>): Promise<T> {
-      db.exec({ sql: 'begin' })
-      try {
-        const result = await work(executor)
-        db.exec({ sql: 'commit' })
-        return result
-      } catch (err) {
-        db.exec({ sql: 'rollback' })
-        throw err
-      }
+    execute(sql, params = []) {
+      return serialize(() => Promise.resolve(run(sql, params)))
+    },
+    select<T extends Row = Row>(sql: string, params: readonly SqlValue[] = []) {
+      return serialize(() => Promise.resolve(runSelect<T>(sql, params)))
+    },
+    transaction<T>(work: (tx: Executor) => Promise<T>): Promise<T> {
+      return serialize(async () => {
+        db.exec({ sql: 'begin' })
+        try {
+          const result = await work(txExecutor)
+          db.exec({ sql: 'commit' })
+          return result
+        } catch (err) {
+          db.exec({ sql: 'rollback' })
+          throw err
+        }
+      })
     },
     close() {
       db.close()

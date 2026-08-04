@@ -122,4 +122,27 @@ describe('LocalStore contract (node:sqlite fixture)', () => {
     const ids = await store.select<{ id: string }>('select id from events order by id')
     expect(ids.map((r) => r.id)).toEqual(['direct', 'intx'])
   })
+
+  it('serialises: a concurrent execute cannot interleave inside an open transaction', async () => {
+    store = createNodeSqliteStore()
+    await migrate(store)
+    const order: string[] = []
+
+    // A transaction that yields between two writes — the window where a naive shared handle would let
+    // an outside op sneak in (the sync-audit hazard).
+    const tx = store.transaction(async (t) => {
+      await t.execute("insert into events (id, total_minor) values ('A', '0')")
+      order.push('A')
+      await Promise.resolve() // yield the microtask queue
+      await t.execute("insert into events (id, total_minor) values ('B', '0')")
+      order.push('B')
+    })
+    // Fired WITHOUT awaiting the transaction: it must queue behind it, not run at the yield.
+    const outside = store
+      .execute("insert into events (id, total_minor) values ('C', '0')")
+      .then(() => order.push('C'))
+
+    await Promise.all([tx, outside])
+    expect(order).toEqual(['A', 'B', 'C']) // C waited; it did not land between A and B
+  })
 })
