@@ -8,12 +8,36 @@
  */
 
 import { createNodeSqliteStore } from '@batch/storage/testing'
-import type { LocalStore } from '@batch/storage'
+import type { Executor, LocalStore } from '@batch/storage'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { shift } from '@batch/domain'
-import { appendEvent, appendEvents } from './sync/outbox'
+import { appendEvent, appendEvents, markRejected, markSynced } from './sync/outbox'
 import { migrateLocal } from './sync/schema'
 import { closeShiftOps, movementOps, openShiftOps, recordCountOps } from './shift-ops'
+
+/**
+ * Wrap a store so a chosen `execute` inside a transaction throws — to prove the whole group rolls
+ * back. Only `transaction` is intercepted; everything else delegates. The `LocalStore.transaction`
+ * contract is "commit if it resolves, roll back and rethrow if it throws" (packages/storage).
+ */
+function failingStore(base: LocalStore, failOn: (sql: string) => boolean): LocalStore {
+  return {
+    execute: base.execute.bind(base),
+    select: base.select.bind(base),
+    close: base.close.bind(base),
+    transaction: (work) =>
+      base.transaction((tx) => {
+        const wrapped: Executor = {
+          select: tx.select.bind(tx),
+          execute: (sql, params) => {
+            if (failOn(sql)) throw new Error('injected mid-transaction failure')
+            return tx.execute(sql, params)
+          },
+        }
+        return work(wrapped)
+      }),
+  }
+}
 
 describe('shift events through the local outbox', () => {
   let store: LocalStore
@@ -58,6 +82,65 @@ describe('shift events through the local outbox', () => {
 
     const rows = await store.select<{ n: number }>("select count(*) as n from events where event_type = 'PaidOut'")
     expect(rows[0]?.n).toBe(1)
+  })
+
+  it('rolls a multi-event group back atomically: a mid-group failure leaves zero rows', async () => {
+    const { outgoing } = openShiftOps({
+      deviceId: 'd1',
+      openedByStaffId: 's1',
+      denominations: [{ denominationMinor: 5000n, count: 3n }],
+      countedMinor: 150_00n,
+    })
+    expect(outgoing).toHaveLength(2) // ShiftOpened + CashDeclared(float)
+
+    // Fail the SECOND event's insert-into-events, mid-transaction, after the first has been written.
+    let eventInserts = 0
+    const poisoned = failingStore(store, (sql) => {
+      if (/insert\s+into\s+events/i.test(sql)) {
+        eventInserts += 1
+        return eventInserts === 2
+      }
+      return false
+    })
+
+    await expect(appendEvents(poisoned, outgoing)).rejects.toThrow(/injected/)
+
+    // The already-written first event must NOT survive — the group committed as a unit or not at all.
+    const evs = await store.select<{ n: number }>('select count(*) as n from events')
+    expect(evs[0]?.n).toBe(0)
+    const ob = await store.select<{ n: number }>('select count(*) as n from outbox')
+    expect(ob[0]?.n).toBe(0)
+  })
+
+  it('never deletes: markSynced/markRejected advance the outbox row, they do not remove it', async () => {
+    const { outgoing } = openShiftOps({ deviceId: 'd1', openedByStaffId: 's1', denominations: [], countedMinor: 100_00n })
+    await appendEvents(store, outgoing)
+    const openEvt = outgoing[0]!
+    const floatEvt = outgoing[1]!
+
+    await markSynced(store, openEvt.event.eventId, '42')
+    await markRejected(store, floatEvt.event.eventId, 'BOOM')
+
+    // Both event rows are still present — the log is append-only regardless of sync outcome.
+    const evs = await store.select<{ n: number }>('select count(*) as n from events')
+    expect(evs[0]?.n).toBe(2)
+
+    // The synced row advanced (synced_at + server_seq set), it was not removed.
+    const synced = await store.select<{ synced_at: string | null; server_seq: string | null }>(
+      'select synced_at, server_seq from outbox where event_id = ?',
+      [openEvt.event.eventId],
+    )
+    expect(synced[0]?.synced_at).not.toBeNull()
+    expect(synced[0]?.server_seq).toBe('42')
+
+    // The rejected row stays unsynced and visible, with the error recorded for the operator.
+    const rejected = await store.select<{ synced_at: string | null; attempts: number; last_error: string | null }>(
+      'select synced_at, attempts, last_error from outbox where event_id = ?',
+      [floatEvt.event.eventId],
+    )
+    expect(rejected[0]?.synced_at).toBeNull()
+    expect(rejected[0]?.attempts).toBe(1)
+    expect(rejected[0]?.last_error).toBe('BOOM')
   })
 
   it('the terminal Z-read (CloseShift) commits atomically after a count', async () => {

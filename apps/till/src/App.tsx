@@ -73,11 +73,10 @@ export function App(): JSX.Element {
   })
 
   const identity = currentIdentity()
-  const shiftHook = useShift({
-    deviceId: identity?.deviceId ?? '',
-    onCommitError: () =>
-      showToast("Couldn't save that change — it's kept on screen, but check storage space."),
-  })
+  // No `onCommitError` toast here (unlike `useOrder`): a failed drawer write rolls the optimistic
+  // append back and rethrows, and each shift handler below catches it, toasts, and stays put — so a
+  // failed count/movement never advances the UI as if it had recorded.
+  const shiftHook = useShift({ deviceId: identity?.deviceId ?? '' })
 
   // Connectivity is informational only — offline is normal operation (root CLAUDE.md), never an error.
   useEffect(() => {
@@ -222,31 +221,48 @@ export function App(): JSX.Element {
 
   const handleOpenShift = useCallback(
     async (input: { openedByStaffId: string; denominations: readonly shift.DenominationCount[]; countedMinor: bigint }) => {
-      await shiftHook.openShift(input)
+      try {
+        await shiftHook.openShift(input)
+      } catch {
+        showToast("Couldn't open the shift — check storage and try again.")
+        return
+      }
       setZSealed(null)
       setPendingClose(null)
       setVarianceInfo(null)
       setScreen('order')
     },
-    [shiftHook],
+    [shiftHook, showToast],
   )
 
   const handleMovementCommit = useCallback(
     async (kind: Parameters<typeof shiftHook.payMovement>[0], input: Parameters<typeof shiftHook.payMovement>[1]) => {
-      await shiftHook.payMovement(kind, input)
+      try {
+        await shiftHook.payMovement(kind, input)
+      } catch {
+        // Stay on the movements sheet so the barista can retry; the movement was rolled back.
+        showToast("Couldn't record the movement — check storage and try again.")
+        return
+      }
       setMovementsOpen(false)
     },
-    [shiftHook],
+    [shiftHook, showToast],
   )
 
   const handleBlindCountCommit = useCallback(
     async (input: { denominations: readonly shift.DenominationCount[]; countedMinor: bigint }) => {
-      await shiftHook.recordCount(input)
+      try {
+        await shiftHook.recordCount(input)
+      } catch {
+        // The count did not persist — do NOT advance to the variance screen with a phantom count.
+        showToast("Couldn't save the count — check storage and try again.")
+        return
+      }
       const v = await shiftHook.variance()
       setVarianceInfo(v)
       setScreen('variance')
     },
-    [shiftHook],
+    [shiftHook, showToast],
   )
 
   const handleReadyToClose = useCallback((pending: PendingClose) => {
@@ -256,12 +272,19 @@ export function App(): JSX.Element {
 
   const handleRunZ = useCallback(
     async (pending: PendingClose) => {
-      const z = await shiftHook.closeShift(pending)
+      let z: shift.ZReport
+      try {
+        z = await shiftHook.closeShift(pending)
+      } catch {
+        // The seal did not persist — the shift stays open. The manager retries the hold.
+        showToast("Couldn't issue the Z — the shift is still open. Try the hold again.")
+        return
+      }
       setZSealed(z)
       setPendingClose(null)
       shiftHook.reset() // this device can open a fresh shift immediately; the Z receipt lives in `zSealed`
     },
-    [shiftHook],
+    [shiftHook, showToast],
   )
 
   // Dev-only on-device storage preflight (import.meta.env.DEV → tree-shaken from production builds).

@@ -36,7 +36,6 @@ export interface VarianceInfo {
 
 export interface UseShiftOptions {
   readonly deviceId: string
-  readonly onCommitError?: (err: unknown) => void
 }
 
 export interface UseShift {
@@ -70,7 +69,7 @@ export interface UseShift {
 }
 
 export function useShift(options: UseShiftOptions): UseShift {
-  const { deviceId, onCommitError } = options
+  const { deviceId } = options
   const [events, setEvents] = useState<readonly shift.ShiftEvent[]>([])
   const eventsRef = useRef<readonly shift.ShiftEvent[]>([])
 
@@ -79,20 +78,26 @@ export function useShift(options: UseShiftOptions): UseShift {
   stateRef.current = state
 
   const applyAndCommit = useCallback(
-    (outgoing: readonly OutgoingShiftEvent[]): Promise<void> => {
-      if (outgoing.length === 0) return Promise.resolve()
-      const next = [...eventsRef.current, ...outgoing.map((o) => o.event)]
+    async (outgoing: readonly OutgoingShiftEvent[]): Promise<void> => {
+      if (outgoing.length === 0) return
+      const snapshot = eventsRef.current
+      const next = [...snapshot, ...outgoing.map((o) => o.event)]
       eventsRef.current = next
       setEvents(next) // optimistic: paints before the awaited commit below (root CLAUDE.md)
-      return measure('localCommit', async () => {
-        await commitEvents(outgoing)
-      })
-        .then(() => undefined)
-        .catch((err: unknown) => {
-          onCommitError?.(err)
-        })
+      try {
+        await measure('localCommit', () => commitEvents(outgoing))
+      } catch (err) {
+        // A drawer action (float, movement, count, handover, Z) that failed to persist must NOT linger
+        // as though it recorded — a phantom paid-out or count would corrupt the reconciliation this
+        // whole sprint exists to protect. Unlike an order line (kept on screen to retry, low stakes),
+        // roll the optimistic append back and rethrow so the caller stays put and the operator retries
+        // rather than advancing — e.g. a failed count never reaches the variance screen (sync-auditor).
+        eventsRef.current = snapshot
+        setEvents(snapshot)
+        throw err instanceof Error ? err : new Error(String(err))
+      }
     },
-    [onCommitError],
+    [],
   )
 
   const openShift = useCallback(
@@ -182,23 +187,13 @@ export function useShift(options: UseShiftOptions): UseShift {
         reasonCodes: input.reasonCodes,
         authorised: input.authorised,
       })
-      const snapshot = eventsRef.current
-      const next = [...snapshot, outgoing.event]
-      eventsRef.current = next
-      setEvents(next)
-      try {
-        // The Z-read commits atomically, same discipline as the order path's terminal tender+close
-        // pair — a half-written seal (event lost after the UI already shows "closed") is worse than
-        // staying open and letting the manager retry the hold.
-        await measure('localCommit', () => commitEvents([outgoing]))
-      } catch (err) {
-        eventsRef.current = snapshot
-        setEvents(snapshot)
-        throw err instanceof Error ? err : new Error(String(err))
-      }
-      return shift.zReport(shift.reduceShift(next))
+      // Same rollback-on-failure discipline as every other drawer action — a half-written seal (event
+      // lost after the UI shows "closed") is worse than staying open and letting the manager retry the
+      // hold. `applyAndCommit` rolls back + rethrows, so on failure the shift stays open.
+      await applyAndCommit([outgoing])
+      return shift.zReport(shift.reduceShift(eventsRef.current))
     },
-    [variance],
+    [variance, applyAndCommit],
   )
 
   const reset = useCallback((): void => {
