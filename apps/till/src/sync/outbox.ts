@@ -1,4 +1,4 @@
-import type { OrderEvent } from '@batch/domain'
+import type { OrderEvent, shift } from '@batch/domain'
 import { toJson, type AggregateType, type SyncEventInput, type SyncPulledEvent } from '@batch/schemas'
 import type { Executor, LocalStore } from '@batch/storage'
 
@@ -13,9 +13,20 @@ import type { Executor, LocalStore } from '@batch/storage'
 /** An event on its way to the server: the domain event plus its sync envelope. */
 export interface OutgoingEvent {
   readonly aggregateType: AggregateType
-  readonly event: OrderEvent
+  /** Order or shift (ADR 0006). Storage is generic over both; only order events carry a total. */
+  readonly event: OrderEvent | shift.ShiftEvent
   /** The client's computed total, for the server to re-derive and check. Tender/close carry it. */
   readonly expectedTotalMinor?: bigint
+}
+
+/**
+ * The order-path narrowing of {@link OutgoingEvent}. The order screens and `useOrder` fold the
+ * emitted events straight back through the order reducer, so on that path `.event` must stay
+ * `OrderEvent`. The union above lives only at the storage/sync seam (the outbox is generic over both
+ * aggregates); order-producing helpers return this narrower shape.
+ */
+export interface OutgoingOrderEvent extends OutgoingEvent {
+  readonly event: OrderEvent
 }
 
 export interface AppendOutcome {

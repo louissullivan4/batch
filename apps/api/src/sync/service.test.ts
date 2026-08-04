@@ -1,26 +1,28 @@
 import { describe, it, expect } from 'vitest'
-import type { OrderEvent } from '@batch/domain'
+import type { OrderEvent, shift } from '@batch/domain'
 import type { SyncRequest } from '@batch/schemas'
 import {
   getDeviceHighWater,
   processSyncBatch,
   pullDeviceEvents,
+  type AnyEvent,
   type AppendResult,
   type PulledEvent,
   type SyncStore,
 } from './service'
 
 const OID = '0190b4c2-1e3a-7c8d-8f2a-1b2c3d4e5f60'
+const SID = '0190b4c2-1e3a-7c8d-8f2a-1b2c3d4e5f70'
 const OCC = '2026-08-03T10:00:00.000Z'
 const DEVICE = '0190b4c2-1e3a-7000-8000-0000000000de'
 
 // In-memory store that mimics the unique (tenant_id, event_id) constraint for a single tenant.
 class FakeStore implements SyncStore {
   private seq = 0n
-  private byEventId = new Map<string, { seq: bigint; event: OrderEvent; aggregateType: string }>()
-  private order: { seq: bigint; event: OrderEvent; type: string; id: string; device: string }[] = []
+  private byEventId = new Map<string, { seq: bigint; event: AnyEvent; aggregateType: string }>()
+  private order: { seq: bigint; event: AnyEvent; type: string; id: string; device: string }[] = []
 
-  async loadAggregateEvents(aggregateType: string, aggregateId: string): Promise<OrderEvent[]> {
+  async loadAggregateEvents(aggregateType: string, aggregateId: string): Promise<AnyEvent[]> {
     return this.order
       .filter((r) => r.type === aggregateType && r.id === aggregateId)
       .map((r) => r.event)
@@ -31,7 +33,7 @@ class FakeStore implements SyncStore {
   }
 
   async append(
-    event: OrderEvent,
+    event: AnyEvent,
     meta: { aggregateType: string; deviceId: string },
   ): Promise<AppendResult> {
     const existing = this.byEventId.get(event.eventId)
@@ -111,6 +113,18 @@ const order = (event: OrderEvent, expectedTotalMinor?: bigint) => ({
   ...(expectedTotalMinor === undefined ? {} : { expectedTotalMinor }),
   event,
 })
+
+function shiftOpen(eventId: string): shift.ShiftEvent {
+  return {
+    eventId,
+    aggregateId: SID,
+    occurredAt: OCC,
+    eventType: 'ShiftOpened',
+    payload: { deviceId: DEVICE, openedByStaffId: 'staff-1', currency: 'EUR' },
+  }
+}
+
+const shiftItem = (event: shift.ShiftEvent) => ({ aggregateType: 'shift' as const, event })
 
 const req = (...events: SyncRequest['events']): SyncRequest => ({ events })
 
@@ -211,6 +225,26 @@ describe('processSyncBatch', () => {
     const res = await processSyncBatch(store, DEVICE, { events: [item] })
     expect(res.results[0]!.status).toBe('rejected')
     expect(res.results[0]!.error).toBe('UNSUPPORTED_AGGREGATE')
+  })
+
+  it('accepts a shift event (no total-check) and de-duplicates a replay', async () => {
+    const store = new FakeStore()
+    const res = await processSyncBatch(store, DEVICE, req(shiftItem(shiftOpen('s0'))))
+    expect(res.results[0]!.status).toBe('accepted')
+    expect(res.results[0]!.seq).toBe('1')
+
+    const replay = await processSyncBatch(store, DEVICE, req(shiftItem(shiftOpen('s0'))))
+    expect(replay.results[0]!.status).toBe('duplicate')
+    expect(replay.results[0]!.seq).toBe('1')
+  })
+
+  it('enforces shift lifecycle invariants server-side: a second ShiftOpened is rejected', async () => {
+    const store = new FakeStore()
+    await processSyncBatch(store, DEVICE, req(shiftItem(shiftOpen('s0'))))
+    const res = await processSyncBatch(store, DEVICE, req(shiftItem(shiftOpen('s1'))))
+    expect(res.results[0]!.status).toBe('rejected')
+    expect(res.results[0]!.error).toBe('ALREADY_OPEN')
+    expect(await store.findSeq('s1')).toBeNull() // not persisted
   })
 })
 

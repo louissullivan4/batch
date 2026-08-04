@@ -7,7 +7,7 @@ import {
   type VatRateBp,
 } from '@batch/domain'
 import { uuidv7 } from './sync'
-import type { OutgoingEvent } from './sync'
+import type { OutgoingOrderEvent } from './sync'
 
 /**
  * Builds order events on the till, using the SAME `@batch/domain` reducer the server uses to check
@@ -20,7 +20,7 @@ const now = (): string => new Date().toISOString()
 
 export function openOrder(input: { fulfilment: FulfilmentMode; staffId?: string }): {
   orderId: string
-  outgoing: OutgoingEvent
+  outgoing: OutgoingOrderEvent
 } {
   const orderId = uuidv7()
   const event: OrderEvent = {
@@ -44,7 +44,7 @@ export function addLine(
     fulfilment: FulfilmentMode
     modifiers?: readonly LineModifier[]
   },
-): OutgoingEvent {
+): OutgoingOrderEvent {
   const event: OrderEvent = {
     eventId: uuidv7(),
     aggregateId: orderId,
@@ -63,7 +63,7 @@ export function voidLine(
   orderId: string,
   lineId: string,
   opts: { quantity?: bigint; reason?: string } = {},
-): OutgoingEvent {
+): OutgoingOrderEvent {
   const event: OrderEvent = {
     eventId: uuidv7(),
     aggregateId: orderId,
@@ -79,7 +79,7 @@ export function voidLine(
 }
 
 /** Close a fully-tendered order (A-007) — the terminal event of a completed sale. */
-export function closeOrder(orderId: string): OutgoingEvent {
+export function closeOrder(orderId: string): OutgoingOrderEvent {
   const event: OrderEvent = {
     eventId: uuidv7(),
     aggregateId: orderId,
@@ -103,7 +103,7 @@ export function tenderCash(
   orderId: string,
   priorEvents: readonly OrderEvent[],
   input: { tenderedMinor: bigint },
-): OutgoingEvent {
+): OutgoingOrderEvent {
   const totalMinor = orderTotalMinor(priorEvents)
   const event: OrderEvent = {
     eventId: uuidv7(),

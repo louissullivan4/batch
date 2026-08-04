@@ -5,6 +5,8 @@ export default tseslint.config(
   {
     ignores: [
       '**/dist/**',
+      // vite-plugin-pwa dev service-worker output (devOptions.enabled) — generated, git-ignored.
+      '**/dev-dist/**',
       '**/node_modules/**',
       '**/.turbo/**',
       '**/coverage/**',

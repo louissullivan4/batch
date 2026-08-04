@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeTotals, reduceOrder, type OrderEvent } from '@batch/domain'
+import { computeTotals, reduceOrder, type OrderEvent, type shift } from '@batch/domain'
 import {
   activeLineViews,
   addItemOps,
@@ -18,9 +18,15 @@ function item(productId: string): MenuItem {
   throw new Error(`no menu item ${productId}`)
 }
 
-/** Append the events of an OutgoingEvent[] to a running log. */
-function apply(events: readonly OrderEvent[], outgoing: readonly { event: OrderEvent }[]): OrderEvent[] {
-  return [...events, ...outgoing.map((o) => o.event)]
+/**
+ * Append the events of an OutgoingEvent[] to a running log. `OutgoingEvent.event` is the order|shift
+ * wire union, but every op exercised here is order-only, so narrowing to OrderEvent is sound.
+ */
+function apply(
+  events: readonly OrderEvent[],
+  outgoing: readonly { event: OrderEvent | shift.ShiftEvent }[],
+): OrderEvent[] {
+  return [...events, ...outgoing.map((o) => o.event as OrderEvent)]
 }
 
 describe('addItemOps', () => {

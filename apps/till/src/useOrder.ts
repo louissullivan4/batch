@@ -20,7 +20,7 @@ import {
   type OrderLineView,
 } from './order-ops'
 import type { MenuItem, ModifierSelection } from './menu/menu'
-import type { OutgoingEvent } from './sync'
+import type { OutgoingOrderEvent } from './sync'
 
 export interface UseOrder {
   readonly orderId: string | null
@@ -50,7 +50,7 @@ export function useOrder(options: UseOrderOptions = {}): UseOrder {
   const orderIdRef = useRef<string | null>(null)
 
   const applyAndCommit = useCallback(
-    (outgoing: readonly OutgoingEvent[]): Promise<void> => {
+    (outgoing: readonly OutgoingOrderEvent[]): Promise<void> => {
       if (outgoing.length === 0) return Promise.resolve()
       const next = [...eventsRef.current, ...outgoing.map((o) => o.event)]
       eventsRef.current = next

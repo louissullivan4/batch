@@ -2,6 +2,7 @@ import {
   computeTotals,
   OrderReductionError,
   reduce,
+  shift,
   type OrderEvent,
   type OrderState,
 } from '@batch/domain'
@@ -19,7 +20,14 @@ import {
  * The sync algorithm, independent of Postgres. The route wires a `SyncStore` backed by a tenant
  * transaction; tests wire an in-memory one. Everything tenant-sensitive lives in the store, so this
  * function never sees a tenant id — it cannot leak one.
+ *
+ * Two aggregates flow through here: `order` (reduced + total-checked) and `shift` (reduced for its
+ * lifecycle invariants — no double-close, no double-Z — but never total-checked; a shift carries no
+ * order total). `ledger` is declared but still unwritten (ADR 0006), so it is rejected.
  */
+
+/** Either aggregate's event; the wire union (ADR 0006). The store persists both identically. */
+export type AnyEvent = OrderEvent | shift.ShiftEvent
 
 export interface AppendResult {
   /** false when the unique (tenant_id, event_id) constraint already held the row. */
@@ -31,15 +39,15 @@ export interface AppendResult {
 export interface PulledEvent {
   readonly seq: bigint
   readonly aggregateType: string
-  readonly event: OrderEvent
+  readonly event: AnyEvent
 }
 
 export interface SyncStore {
   /** Replay a single aggregate's already-persisted events, in server order. Tenant-scoped. */
-  loadAggregateEvents(aggregateType: string, aggregateId: string): Promise<OrderEvent[]>
+  loadAggregateEvents(aggregateType: string, aggregateId: string): Promise<AnyEvent[]>
   /** Append idempotently. A constraint hit returns the existing row's seq with inserted=false. */
   append(
-    event: OrderEvent,
+    event: AnyEvent,
     meta: { aggregateType: string; deviceId: string },
   ): Promise<AppendResult>
   /** The seq of an already-stored event, or null. Tenant-scoped. */
@@ -91,63 +99,111 @@ export async function processSyncBatch(
   request: SyncRequest,
 ): Promise<SyncResponse> {
   const results: SyncResult[] = []
-  // Per-aggregate replay state, loaded once and advanced as events in the batch are accepted.
-  const stateByAggregate = new Map<string, OrderState | null>()
+  // Per-aggregate replay state, loaded once and advanced as events in the batch are accepted. Order
+  // and shift keep separate maps — their aggregate ids share no namespace, and their state types and
+  // reducers differ.
+  const orderStateByAggregate = new Map<string, OrderState | null>()
+  const shiftStateByAggregate = new Map<string, shift.ShiftState | null>()
 
   for (const item of request.events) {
     const { event, aggregateType } = item
     const { eventId, aggregateId } = event
 
-    if (aggregateType !== 'order') {
-      // Only the order aggregate is reduced today; the ledger gets its own reducer later.
-      results.push(reject(eventId, 'UNSUPPORTED_AGGREGATE'))
+    if (aggregateType === 'order') {
+      // `event` is the wire union; `aggregateType` is the discriminator the client tagged it with. A
+      // mismatched pair (a shift event tagged 'order') is not trusted on the strength of the cast —
+      // the order reducer rejects it below, which is the real backstop.
+      const orderEvent = event as OrderEvent
+
+      if (!orderStateByAggregate.has(aggregateId)) {
+        const prior = await store.loadAggregateEvents(aggregateType, aggregateId)
+        let seeded: OrderState | null = null
+        for (const e of prior) seeded = reduce(seeded, e as OrderEvent)
+        orderStateByAggregate.set(aggregateId, seeded)
+      }
+      const current = orderStateByAggregate.get(aggregateId) ?? null
+
+      // Already folded (persisted earlier, or seen earlier in this same batch)? Report the existing
+      // seq and move on. Checking the replayed state here — rather than catching a reducer error —
+      // treats every re-sent event uniformly, including OrderOpened (which would otherwise surface as
+      // ALREADY_OPEN, not DUPLICATE_EVENT).
+      if (current !== null && current.appliedEventIds.has(eventId)) {
+        const seq = await store.findSeq(eventId)
+        results.push({ eventId, seq: seq?.toString() ?? null, status: 'duplicate' })
+        continue
+      }
+
+      let next: OrderState
+      try {
+        next = reduce(current, orderEvent)
+      } catch (err) {
+        results.push(reject(eventId, err instanceof OrderReductionError ? err.code : 'INVALID_EVENT'))
+        continue
+      }
+
+      // Re-derive the total with the identical reducer the till used, and reject on mismatch.
+      if (item.expectedTotalMinor !== undefined) {
+        const actual = computeTotals(next).totalMinor
+        if (actual !== item.expectedTotalMinor) {
+          results.push(
+            reject(eventId, `TOTAL_MISMATCH expected=${item.expectedTotalMinor} actual=${actual}`),
+          )
+          continue
+        }
+      }
+
+      const appended = await store.append(orderEvent, { aggregateType, deviceId })
+      orderStateByAggregate.set(aggregateId, next)
+      results.push({
+        eventId,
+        seq: appended.seq.toString(),
+        status: appended.inserted ? 'accepted' : 'duplicate',
+      })
       continue
     }
 
-    if (!stateByAggregate.has(aggregateId)) {
-      const prior = await store.loadAggregateEvents(aggregateType, aggregateId)
-      let seeded: OrderState | null = null
-      for (const e of prior) seeded = reduce(seeded, e)
-      stateByAggregate.set(aggregateId, seeded)
-    }
-    const current = stateByAggregate.get(aggregateId) ?? null
+    if (aggregateType === 'shift') {
+      // Shift replays through its own reducer so the server enforces the same lifecycle invariants the
+      // till does (single open shift, no double-close, no double-Z, no movement after Z). There is no
+      // total to re-derive — a shift carries none — so no `expectedTotalMinor` check runs here.
+      const shiftEvent = event as shift.ShiftEvent
 
-    // Already folded (persisted earlier, or seen earlier in this same batch)? Report the existing
-    // seq and move on. Checking the replayed state here — rather than catching a reducer error —
-    // treats every re-sent event uniformly, including OrderOpened (which would otherwise surface as
-    // ALREADY_OPEN, not DUPLICATE_EVENT).
-    if (current !== null && current.appliedEventIds.has(eventId)) {
-      const seq = await store.findSeq(eventId)
-      results.push({ eventId, seq: seq?.toString() ?? null, status: 'duplicate' })
-      continue
-    }
+      if (!shiftStateByAggregate.has(aggregateId)) {
+        const prior = await store.loadAggregateEvents(aggregateType, aggregateId)
+        let seeded: shift.ShiftState | null = null
+        for (const e of prior) seeded = shift.reduce(seeded, e as shift.ShiftEvent)
+        shiftStateByAggregate.set(aggregateId, seeded)
+      }
+      const current = shiftStateByAggregate.get(aggregateId) ?? null
 
-    let next: OrderState
-    try {
-      next = reduce(current, event)
-    } catch (err) {
-      results.push(reject(eventId, err instanceof OrderReductionError ? err.code : 'INVALID_EVENT'))
-      continue
-    }
+      if (current !== null && current.appliedEventIds.has(eventId)) {
+        const seq = await store.findSeq(eventId)
+        results.push({ eventId, seq: seq?.toString() ?? null, status: 'duplicate' })
+        continue
+      }
 
-    // Re-derive the total with the identical reducer the till used, and reject on mismatch.
-    if (item.expectedTotalMinor !== undefined) {
-      const actual = computeTotals(next).totalMinor
-      if (actual !== item.expectedTotalMinor) {
+      let next: shift.ShiftState
+      try {
+        next = shift.reduce(current, shiftEvent)
+      } catch (err) {
         results.push(
-          reject(eventId, `TOTAL_MISMATCH expected=${item.expectedTotalMinor} actual=${actual}`),
+          reject(eventId, err instanceof shift.ShiftReductionError ? err.code : 'INVALID_EVENT'),
         )
         continue
       }
+
+      const appended = await store.append(shiftEvent, { aggregateType, deviceId })
+      shiftStateByAggregate.set(aggregateId, next)
+      results.push({
+        eventId,
+        seq: appended.seq.toString(),
+        status: appended.inserted ? 'accepted' : 'duplicate',
+      })
+      continue
     }
 
-    const appended = await store.append(event, { aggregateType, deviceId })
-    stateByAggregate.set(aggregateId, next)
-    results.push({
-      eventId,
-      seq: appended.seq.toString(),
-      status: appended.inserted ? 'accepted' : 'duplicate',
-    })
+    // `ledger` is declared in the CHECK but has no reducer yet (ADR 0006); reject until it lands.
+    results.push(reject(eventId, 'UNSUPPORTED_AGGREGATE'))
   }
 
   return { results }

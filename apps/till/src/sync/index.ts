@@ -11,6 +11,7 @@ export {
   localStats,
   insertSynced,
   type OutgoingEvent,
+  type OutgoingOrderEvent,
   type AppendOutcome,
   type QueuedEvent,
   type LocalStats,

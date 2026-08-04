@@ -1,7 +1,6 @@
-import type { OrderEvent } from '@batch/domain'
-import { OrderEventSchema, toJson } from '@batch/schemas'
+import { OrderEventSchema, ShiftEventSchema, toJson } from '@batch/schemas'
 import type { PoolClient } from '../db'
-import type { AppendResult, PulledEvent, SyncStore } from './service'
+import type { AnyEvent, AppendResult, PulledEvent, SyncStore } from './service'
 
 /**
  * Postgres-backed `SyncStore`, bound to a client that already ran `set_config('app.tenant_id', …)`.
@@ -22,14 +21,19 @@ interface PulledRow extends EventRow {
   aggregate_type: string
 }
 
-function rowToEvent(row: EventRow): OrderEvent {
-  return OrderEventSchema.parse({
+function rowToEvent(row: EventRow, aggregateType: string): AnyEvent {
+  const raw = {
     eventId: row.event_id,
     aggregateId: row.aggregate_id,
     occurredAt: row.occurred_at.toISOString(),
     eventType: row.event_type,
     payload: row.payload,
-  })
+  }
+  // Parse with the schema for the row's aggregate — the two share an envelope but disjoint event
+  // types, so the wrong schema would reject a valid row. Only order/shift are ever persisted today.
+  if (aggregateType === 'shift') return ShiftEventSchema.parse(raw)
+  if (aggregateType === 'order') return OrderEventSchema.parse(raw)
+  throw new Error(`rowToEvent: no schema for aggregate_type ${aggregateType}`)
 }
 
 export function createPgStore(client: PoolClient): SyncStore {
@@ -43,7 +47,7 @@ export function createPgStore(client: PoolClient): SyncStore {
   }
 
   return {
-    async loadAggregateEvents(aggregateType, aggregateId): Promise<OrderEvent[]> {
+    async loadAggregateEvents(aggregateType, aggregateId): Promise<AnyEvent[]> {
       const res = await client.query<EventRow>(
         `select event_id, aggregate_id, event_type, payload, occurred_at
            from event_log
@@ -51,7 +55,7 @@ export function createPgStore(client: PoolClient): SyncStore {
           order by seq`,
         [aggregateType, aggregateId],
       )
-      return res.rows.map(rowToEvent)
+      return res.rows.map((row) => rowToEvent(row, aggregateType))
     },
 
     findSeq,
@@ -110,7 +114,7 @@ export function createPgStore(client: PoolClient): SyncStore {
       return res.rows.map((row) => ({
         seq: BigInt(row.seq),
         aggregateType: row.aggregate_type,
-        event: rowToEvent(row),
+        event: rowToEvent(row, row.aggregate_type),
       }))
     },
   }

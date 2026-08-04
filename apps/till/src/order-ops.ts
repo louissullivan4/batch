@@ -1,6 +1,6 @@
 /**
  * Pure order-mutation logic for the till UI — no React, no I/O. Each function turns the current
- * order (its events) plus an operator intent into the `OutgoingEvent[]` to append. The React hook
+ * order (its events) plus an operator intent into the `OutgoingOrderEvent[]` to append. The React hook
  * (`useOrder`) is a thin wrapper that holds the events in state and commits these off the paint path.
  *
  * Everything routes through the shared `@batch/domain` reducer/totals (non-negotiable #6), so the
@@ -15,7 +15,7 @@ import { reduceOrder, type OrderModifier, type OrderState, type VatRateBp } from
 import { addLine, closeOrder, openOrder, tenderCash, voidLine } from './order'
 import { MENU, selectionToModifiers, type MenuItem, type ModifierSelection } from './menu/menu'
 import type { OrderEvent } from '@batch/domain'
-import type { OutgoingEvent } from './sync'
+import type { OutgoingOrderEvent } from './sync'
 
 /** A line as the order pane renders it — only still-active units, with a display summary. */
 export interface OrderLineView {
@@ -88,7 +88,7 @@ function findActiveLineBySignature(state: OrderState, signature: string): OrderS
 
 export interface AddItemResult {
   readonly orderId: string
-  readonly outgoing: readonly OutgoingEvent[]
+  readonly outgoing: readonly OutgoingOrderEvent[]
 }
 
 /**
@@ -104,7 +104,7 @@ export function addItemOps(
   selection: ModifierSelection | null,
   staffId?: string,
 ): AddItemResult {
-  const outgoing: OutgoingEvent[] = []
+  const outgoing: OutgoingOrderEvent[] = []
   let oid = orderId
 
   if (oid === null) {
@@ -150,7 +150,7 @@ export function addItemOps(
 }
 
 /** Void an entire line (the design's × → confirm → Remove). */
-export function voidLineOps(orderId: string, lineId: string): OutgoingEvent[] {
+export function voidLineOps(orderId: string, lineId: string): OutgoingOrderEvent[] {
   return [voidLine(orderId, lineId)]
 }
 
@@ -164,7 +164,7 @@ export function replaceLineOps(
   lineId: string,
   item: MenuItem,
   selection: ModifierSelection,
-): OutgoingEvent[] {
+): OutgoingOrderEvent[] {
   const state = reduceOrder(events)
   const line = state.lines.find((l) => l.lineId === lineId)
   if (!line) return []
@@ -193,6 +193,6 @@ export function completeCashOps(
   events: readonly OrderEvent[],
   orderId: string,
   tenderedMinor: bigint,
-): OutgoingEvent[] {
+): OutgoingOrderEvent[] {
   return [tenderCash(orderId, events, { tenderedMinor }), closeOrder(orderId)]
 }

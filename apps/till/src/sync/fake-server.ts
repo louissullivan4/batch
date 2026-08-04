@@ -1,4 +1,4 @@
-import { computeTotals, reduce, type OrderEvent, type OrderState } from '@batch/domain'
+import { computeTotals, reduce, shift, type OrderEvent, type OrderState } from '@batch/domain'
 import {
   SyncEventSchema,
   toWire,
@@ -27,7 +27,7 @@ interface StoredEvent {
   readonly eventId: string
   readonly aggregateType: AggregateType
   readonly aggregateId: string
-  readonly event: OrderEvent
+  readonly event: OrderEvent | shift.ShiftEvent
 }
 
 export class FakeServer {
@@ -39,10 +39,22 @@ export class FakeServer {
     return `${tenantId}|${eventId}`
   }
 
-  private replay(tenantId: string, aggregateId: string): OrderState | null {
+  private replayOrder(tenantId: string, aggregateId: string): OrderState | null {
     let state: OrderState | null = null
     for (const row of this.log) {
-      if (row.tenantId === tenantId && row.aggregateId === aggregateId) state = reduce(state, row.event)
+      if (row.tenantId === tenantId && row.aggregateId === aggregateId && row.aggregateType === 'order') {
+        state = reduce(state, row.event as OrderEvent)
+      }
+    }
+    return state
+  }
+
+  private replayShift(tenantId: string, aggregateId: string): shift.ShiftState | null {
+    let state: shift.ShiftState | null = null
+    for (const row of this.log) {
+      if (row.tenantId === tenantId && row.aggregateId === aggregateId && row.aggregateType === 'shift') {
+        state = shift.reduce(state, row.event as shift.ShiftEvent)
+      }
     }
     return state
   }
@@ -57,15 +69,30 @@ export class FakeServer {
         results.push({ eventId: event.eventId, seq: seenSeq.toString(), status: 'duplicate' })
         continue
       }
-      let next: OrderState
-      try {
-        next = reduce(this.replay(identity.tenantId, event.aggregateId), event)
-      } catch {
-        results.push({ eventId: event.eventId, seq: null, status: 'rejected', error: 'INVALID_EVENT' })
-        continue
-      }
-      if (expectedTotalMinor !== undefined && computeTotals(next).totalMinor !== expectedTotalMinor) {
-        results.push({ eventId: event.eventId, seq: null, status: 'rejected', error: 'TOTAL_MISMATCH' })
+      // Branch by aggregate exactly as the real server does (apps/api/src/sync/service.ts): orders are
+      // reduced + total-checked; shifts are reduced for their lifecycle invariants but carry no total;
+      // ledger has no reducer yet.
+      if (aggregateType === 'order') {
+        let next: OrderState
+        try {
+          next = reduce(this.replayOrder(identity.tenantId, event.aggregateId), event as OrderEvent)
+        } catch {
+          results.push({ eventId: event.eventId, seq: null, status: 'rejected', error: 'INVALID_EVENT' })
+          continue
+        }
+        if (expectedTotalMinor !== undefined && computeTotals(next).totalMinor !== expectedTotalMinor) {
+          results.push({ eventId: event.eventId, seq: null, status: 'rejected', error: 'TOTAL_MISMATCH' })
+          continue
+        }
+      } else if (aggregateType === 'shift') {
+        try {
+          shift.reduce(this.replayShift(identity.tenantId, event.aggregateId), event as shift.ShiftEvent)
+        } catch {
+          results.push({ eventId: event.eventId, seq: null, status: 'rejected', error: 'INVALID_EVENT' })
+          continue
+        }
+      } else {
+        results.push({ eventId: event.eventId, seq: null, status: 'rejected', error: 'UNSUPPORTED_AGGREGATE' })
         continue
       }
       this.seq += 1n

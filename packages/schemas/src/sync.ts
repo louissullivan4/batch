@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { MoneyMinorSchema, UuidSchema } from './primitives'
 import { OrderEventSchema } from './order-events'
+import { ShiftEventSchema } from './shift-events'
 
 /**
  * The till → server sync contract. One direction only: transactions flow up, append-only. Config
@@ -8,8 +9,16 @@ import { OrderEventSchema } from './order-events'
  */
 
 // Non-negotiable #7 / ADR 0006: event-source exactly three aggregates — order, shift, ledger.
-// Only `order` events are emitted today; `shift` lands in Sprint 4, `ledger` with the finance module.
+// `order` and `shift` (Sprint 4) events are emitted today; `ledger` lands with the finance module.
 export const AggregateTypeSchema = z.enum(['order', 'shift', 'ledger'])
+
+/**
+ * Any event the sync spine carries. `order` and `shift` events share the envelope but have disjoint
+ * `eventType` literals, so a plain union parses each unambiguously. `serialize.ts` handles the
+ * `bigint` ↔ string edge generically, so every `*Minor` field and denomination count round-trips
+ * without a per-aggregate branch.
+ */
+export const SyncWireEventSchema = z.union([OrderEventSchema, ShiftEventSchema])
 
 export const SyncEventSchema = z.object({
   aggregateType: AggregateTypeSchema,
@@ -18,7 +27,7 @@ export const SyncEventSchema = z.object({
    * mismatch. Only events that assert a total (tender, close) need carry it.
    */
   expectedTotalMinor: MoneyMinorSchema.optional(),
-  event: OrderEventSchema,
+  event: SyncWireEventSchema,
 })
 
 export const SyncRequestSchema = z.object({
@@ -54,7 +63,7 @@ export const SyncHighWaterResponseSchema = z.object({
 export const SyncPulledEventSchema = z.object({
   seq: z.string(),
   aggregateType: AggregateTypeSchema,
-  event: OrderEventSchema,
+  event: SyncWireEventSchema,
 })
 
 /**
@@ -73,6 +82,8 @@ export type SyncPulledEvent = z.infer<typeof SyncPulledEventSchema>
 export type SyncPullResponse = z.infer<typeof SyncPullResponseSchema>
 
 export type AggregateType = z.infer<typeof AggregateTypeSchema>
+export type SyncWireEvent = z.infer<typeof SyncWireEventSchema>
+export type SyncWireEventInput = z.input<typeof SyncWireEventSchema>
 export type SyncEvent = z.infer<typeof SyncEventSchema>
 export type SyncEventInput = z.input<typeof SyncEventSchema>
 export type SyncRequest = z.infer<typeof SyncRequestSchema>

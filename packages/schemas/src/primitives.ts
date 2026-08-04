@@ -25,7 +25,10 @@ export const MoneyMinorSchema = z
   .regex(/^-?\d+$/, 'money must be an integer number of minor units, as a string')
   .transform((s) => BigInt(s))
 
-/** A non-negative count (e.g. line quantity) as a decimal string, parsed to `bigint`. */
+/**
+ * A non-negative count (e.g. line quantity, a denomination count, or a `countSeq`) as a decimal
+ * string, parsed to `bigint`.
+ */
 export const CountSchema = z
   .string()
   .regex(/^\d+$/, 'count must be a non-negative integer, as a string')
