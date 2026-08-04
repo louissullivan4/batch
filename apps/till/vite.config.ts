@@ -18,7 +18,11 @@ export default defineConfig({
       workbox: {
         // .wasm so the sqlite-wasm binary the OPFS LocalStore adapter loads is precached with the
         // rest of the shell — without it, a cold start on a dead network can't open the local store.
-        globPatterns: ['**/*.{js,css,html,wasm,svg}'],
+        // .woff2 so the self-hosted Spline Sans (design system font) cold-loads offline too; a
+        // network font request on the order path is banned (apps/till/CLAUDE.md).
+        globPatterns: ['**/*.{js,css,html,wasm,svg,woff2}'],
+        // The sqlite-wasm binary is ~865 KB; lift the per-file precache cap so it is included.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       manifest: {
         name: 'Batch Till',

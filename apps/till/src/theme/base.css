@@ -1,0 +1,59 @@
+/*
+ * Base theme for the till. Reads only `var(--*)` from the generated tokens.css — no colour or size
+ * literal lives here (Sprint 3 task 1). Component styles build on these globals.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  background: var(--color-surface);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/*
+ * Tabular numerals on every price, quantity and time (design system global rule): equal-width digits
+ * so totals don't jitter as they change. Applied via this class on money/count/clock elements.
+ */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/*
+ * No hover states anywhere (touch-only device). Touch-down is the only intermediate state; disable
+ * the tap-highlight flash and text selection so a fast double-tap doesn't select text on the counter.
+ */
+button {
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button,
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Respect the operator's reduced-motion setting — the only motion in the till is the sync spinner. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

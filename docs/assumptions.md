@@ -93,6 +93,19 @@ home-screen exemption. Then persistence can't be assumed and the Capacitor nativ
 becomes required, not optional.
 Status: unvalidated
 
+## A-017: The Sprint-3 till menu is a seed fixture; hospitality is 13.5%, retail 23%
+Basis: there is no product CRUD yet (that is Sprint 6 back office, non-negotiable #7). To run the
+Sprint-3 till the app carries a hardcoded menu (`apps/till/src/menu/menu.ts`) whose prices/names
+mirror the design PNG. VAT bands are seed defaults: prepared food & drink (coffee, tea, food) sit in
+the 13.5% reduced hospitality band, retail goods (beans, cups, tote) at 23% standard; a modifier
+inherits its drink's band. Prices are VAT-inclusive (A-009). Every rate is snapshotted onto the line
+event at sale time, so a wrong seed rate corrupts no history once the real menu replaces it.
+Falsifier: the shop's actual VAT setup per revenue.ie / their accountant differs (e.g. cold takeaway
+bakery at 0%, or the hospitality rate has moved again), or an item's price/name in the PNG doesn't
+match the real till card. Then the Sprint-6 product CRUD supplies the true values and this fixture is
+deleted.
+Status: unvalidated
+
 ## A-016: Keypad amount entry is decimal, and ',' / cents-only entry are rejected as ambiguous
 Basis: `parseKeypadInput` (Sprint 2) reads what the operator types as a decimal euro amount
 (`"4.5"` → €4.50, `"450"` → €450.00) and rejects a comma, sub-cent precision, and leading/trailing

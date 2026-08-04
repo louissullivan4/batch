@@ -1,0 +1,48 @@
+/* GENERATED from design/system/tokens.json — do not edit by hand.
+   Regenerate: pnpm --filter @batch/till tokens:gen */
+:root {
+  color-scheme: light;
+  --color-surface: #FAF7F2;
+  --color-raised: #FFFFFF;
+  --color-text: #1C1917;
+  --color-text-muted: #524E48;
+  --color-accent: #943109;
+  --color-accent-pressed: #732708;
+  --color-success: #125E36;
+  --color-warning: #6E4800;
+  --color-destructive: #A3221B;
+  --color-offline-neutral: #57534E;
+  --color-border: #DED6C8;
+  --font-family: 'Spline Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --type-display-size: 40px;
+  --type-display-weight: 700;
+  --type-display-line: 44px;
+  --type-title-size: 28px;
+  --type-title-weight: 600;
+  --type-title-line: 34px;
+  --type-item-size: 20px;
+  --type-item-weight: 600;
+  --type-item-line: 26px;
+  --type-body-size: 17px;
+  --type-body-weight: 400;
+  --type-body-line: 24px;
+  --type-label-size: 15px;
+  --type-label-weight: 600;
+  --type-label-line: 20px;
+  --type-caption-size: 13px;
+  --type-caption-weight: 500;
+  --type-caption-line: 18px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --space-xxxl: 48px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --touch-min: 48px;
+  --touch-primary: 64px;
+}

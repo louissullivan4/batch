@@ -55,6 +55,41 @@ export function addLine(
   return { aggregateType: 'order', event }
 }
 
+/**
+ * Void some or all of a line (ADR 0008). `quantity` omitted voids every still-active unit; the line
+ * id equals the `LineAdded` event's id. Reason is free text (e.g. "customer changed mind").
+ */
+export function voidLine(
+  orderId: string,
+  lineId: string,
+  opts: { quantity?: bigint; reason?: string } = {},
+): OutgoingEvent {
+  const event: OrderEvent = {
+    eventId: uuidv7(),
+    aggregateId: orderId,
+    occurredAt: now(),
+    eventType: 'LineVoided',
+    payload: {
+      lineId,
+      ...(opts.quantity !== undefined ? { quantity: opts.quantity } : {}),
+      ...(opts.reason !== undefined ? { reason: opts.reason } : {}),
+    },
+  }
+  return { aggregateType: 'order', event }
+}
+
+/** Close a fully-tendered order (A-007) — the terminal event of a completed sale. */
+export function closeOrder(orderId: string): OutgoingEvent {
+  const event: OrderEvent = {
+    eventId: uuidv7(),
+    aggregateId: orderId,
+    occurredAt: now(),
+    eventType: 'OrderClosed',
+    payload: {},
+  }
+  return { aggregateType: 'order', event }
+}
+
 /** Replay the order so far and return its current total — the display total and the tender check. */
 export function orderTotalMinor(events: readonly OrderEvent[]): bigint {
   return computeTotals(reduceOrder(events)).totalMinor

@@ -14,6 +14,7 @@ import {
   type DeviceIdentity,
   type KeyValueStore,
   type LocalStats,
+  type OutgoingEvent,
   type ReconcileReport,
   type SyncOutcome,
 } from './sync'
@@ -168,6 +169,16 @@ export async function takeSampleOrder(): Promise<SampleOrderResult> {
 
   const commitMs = performance.now() - start
   return { orderId, totalMinor, tenderedMinor, changeMinor: tenderedMinor - totalMinor, commitMs }
+}
+
+/**
+ * Append one order event to the local store + outbox, in a single transaction (apps/till/CLAUDE.md
+ * write path). No network — the outbox drains later. Callers update their optimistic UI first and
+ * `await` this off the paint path; never block the first frame on it.
+ */
+export async function commitEvent(outgoing: OutgoingEvent): Promise<void> {
+  const { store } = requireRuntime()
+  await appendEvent(store, outgoing)
 }
 
 /** Drain the outbox. The only place this module calls the network outside `reconcile()`. */

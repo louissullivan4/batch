@@ -35,6 +35,23 @@ export default tseslint.config(
     },
   },
   {
+    // Sprint 3 task 1: tokens are the single source of colour. No hex literal may appear in a till
+    // component file — colours are read as `var(--color-*)` from the generated theme. The generated
+    // token modules are the one exception (theme/ holds the source values).
+    files: ['apps/till/src/**/*.{ts,tsx}'],
+    ignores: ['apps/till/src/theme/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/#[0-9a-fA-F]{3,8}/]',
+          message:
+            'No hardcoded colours in the till — use a CSS custom property from src/theme/tokens.css (Sprint 3 task 1).',
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.test.ts'],
     rules: {
       '@typescript-eslint/no-non-null-assertion': 'off',

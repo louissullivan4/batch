@@ -72,6 +72,9 @@ importers:
       '@batch/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@fontsource/spline-sans':
+        specifier: ^5.0.0
+        version: 5.3.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1063,6 +1066,9 @@ packages:
 
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
+
+  '@fontsource/spline-sans@5.3.0':
+    resolution: {integrity: sha512-iH7h2S+Xk3ZFvXweFjH1KGYBuwhrYS/M4RxudPLGiyrRoVvDjPzPaL6N8J+qtaLzZKrg82w1zHgwotYHwsWTqQ==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -4121,6 +4127,8 @@ snapshots:
     dependencies:
       '@fastify/forwarded': 3.0.2
       ipaddr.js: 2.4.0
+
+  '@fontsource/spline-sans@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:
