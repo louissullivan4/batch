@@ -30,6 +30,14 @@ export interface OrderOpenedPayload {
   readonly staffId?: string
 }
 
+/** A modifier snapshotted onto a line at the moment of sale (ADR 0008). Per-unit, own VAT rate. */
+export interface LineModifier {
+  readonly modifierId: string
+  readonly name: string
+  readonly unitPriceMinor: bigint
+  readonly vatRateBp: VatRateBp
+}
+
 export interface LineAddedPayload {
   readonly productId: string
   readonly name: string
@@ -37,19 +45,14 @@ export interface LineAddedPayload {
   readonly unitPriceMinor: bigint
   readonly vatRateBp: VatRateBp
   readonly fulfilment: FulfilmentMode
-}
-
-export interface ModifierAppliedPayload {
-  /** The `eventId` of the `LineAdded` this modifier attaches to. */
-  readonly lineId: string
-  readonly modifierId: string
-  readonly name: string
-  readonly unitPriceMinor: bigint
-  readonly vatRateBp: VatRateBp
+  /** Modifiers chosen when the line was added (ADR 0008); embedded, not a separate event. */
+  readonly modifiers: readonly LineModifier[]
 }
 
 export interface LineVoidedPayload {
   readonly lineId: string
+  /** How many of the line's units to void. Omitted = void all still-active units (ADR 0008). */
+  readonly quantity?: bigint
   readonly reason?: string
 }
 
@@ -93,10 +96,6 @@ export interface OrderRefundedPayload {
 export type OrderEvent =
   | (EventEnvelope & { readonly eventType: 'OrderOpened'; readonly payload: OrderOpenedPayload })
   | (EventEnvelope & { readonly eventType: 'LineAdded'; readonly payload: LineAddedPayload })
-  | (EventEnvelope & {
-      readonly eventType: 'ModifierApplied'
-      readonly payload: ModifierAppliedPayload
-    })
   | (EventEnvelope & { readonly eventType: 'LineVoided'; readonly payload: LineVoidedPayload })
   | (EventEnvelope & {
       readonly eventType: 'DiscountApplied'
@@ -117,7 +116,6 @@ export type OrderEventType = OrderEvent['eventType']
 export const ORDER_EVENT_TYPES: readonly OrderEventType[] = [
   'OrderOpened',
   'LineAdded',
-  'ModifierApplied',
   'LineVoided',
   'DiscountApplied',
   'OrderTendered',

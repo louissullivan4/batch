@@ -126,6 +126,10 @@ export function reduce(state: OrderState | null, event: OrderEvent): OrderState 
       if (p.quantity < 1n) fail('BAD_QUANTITY', `line quantity must be >= 1, got ${p.quantity}`)
       if (p.unitPriceMinor < 0n)
         fail('BAD_PRICE', `unit price must be >= 0, got ${p.unitPriceMinor}`)
+      for (const mod of p.modifiers) {
+        if (mod.unitPriceMinor < 0n)
+          fail('BAD_PRICE', `modifier price must be >= 0, got ${mod.unitPriceMinor}`)
+      }
       const line: OrderLine = {
         lineId: event.eventId,
         productId: p.productId,
@@ -134,41 +138,32 @@ export function reduce(state: OrderState | null, event: OrderEvent): OrderState 
         unitPriceMinor: p.unitPriceMinor,
         vatRateBp: p.vatRateBp,
         fulfilment: p.fulfilment,
-        modifiers: [],
-        voided: false,
+        modifiers: p.modifiers.map((m) => ({
+          modifierId: m.modifierId,
+          name: m.name,
+          unitPriceMinor: m.unitPriceMinor,
+          vatRateBp: m.vatRateBp,
+        })),
+        voidedQuantity: 0n,
       }
       return commit(state, event.eventId, { lines: [...state.lines, line] })
-    }
-
-    case 'ModifierApplied': {
-      requireOpen(state, 'ModifierApplied')
-      const p = event.payload
-      if (p.unitPriceMinor < 0n)
-        fail('BAD_PRICE', `modifier price must be >= 0, got ${p.unitPriceMinor}`)
-      const lines = mapLine(state, p.lineId, (line) => {
-        if (line.voided) fail('LINE_VOIDED', `cannot modify voided line ${p.lineId}`)
-        return {
-          ...line,
-          modifiers: [
-            ...line.modifiers,
-            {
-              modifierId: p.modifierId,
-              name: p.name,
-              unitPriceMinor: p.unitPriceMinor,
-              vatRateBp: p.vatRateBp,
-            },
-          ],
-        }
-      })
-      return commit(state, event.eventId, { lines })
     }
 
     case 'LineVoided': {
       requireOpen(state, 'LineVoided')
       const p = event.payload
       const lines = mapLine(state, p.lineId, (line) => {
-        if (line.voided) fail('ALREADY_VOIDED', `line ${p.lineId} is already voided`)
-        return { ...line, voided: true }
+        const remaining = line.quantity - line.voidedQuantity
+        if (remaining <= 0n) fail('ALREADY_VOIDED', `line ${p.lineId} is already fully voided`)
+        const toVoid = p.quantity ?? remaining
+        if (toVoid < 1n) fail('BAD_VOID_QUANTITY', `void quantity must be >= 1, got ${toVoid}`)
+        if (toVoid > remaining) {
+          fail(
+            'VOID_EXCEEDS_ACTIVE',
+            `cannot void ${toVoid} of ${remaining} active unit(s) on line ${p.lineId}`,
+          )
+        }
+        return { ...line, voidedQuantity: line.voidedQuantity + toVoid }
       })
       return commit(state, event.eventId, { lines })
     }

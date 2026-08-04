@@ -38,10 +38,11 @@ export interface OrderTotals {
 function grossEntries(state: OrderState): VatLine[] {
   const entries: VatLine[] = []
   for (const line of state.lines) {
-    if (line.voided) continue
-    entries.push({ grossMinor: line.quantity * line.unitPriceMinor, vatRateBp: line.vatRateBp })
+    const activeQty = line.quantity - line.voidedQuantity
+    if (activeQty <= 0n) continue
+    entries.push({ grossMinor: activeQty * line.unitPriceMinor, vatRateBp: line.vatRateBp })
     for (const mod of line.modifiers) {
-      entries.push({ grossMinor: line.quantity * mod.unitPriceMinor, vatRateBp: mod.vatRateBp })
+      entries.push({ grossMinor: activeQty * mod.unitPriceMinor, vatRateBp: mod.vatRateBp })
     }
   }
   return entries

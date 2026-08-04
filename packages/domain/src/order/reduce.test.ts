@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import fc from 'fast-check'
 import { extractVatMinor, VAT_REDUCED_BP, VAT_STANDARD_BP, VAT_ZERO_BP } from '../vat'
-import type {
-  LineAddedPayload,
-  ModifierAppliedPayload,
-  OrderEvent,
-  OrderOpenedPayload,
-  OrderTenderedPayload,
-} from './events'
-import { OrderReductionError, reduce, reduceOrder } from './reduce'
+import type { LineAddedPayload, OrderEvent, OrderOpenedPayload, OrderTenderedPayload } from './events'
+import { reduce, reduceOrder } from './reduce'
+import { decide, type DecideContext, type OrderCommand } from './decide'
 import { computeTotals } from './totals'
 import type { OrderState } from './state'
 
@@ -40,37 +35,19 @@ function lineAdded(eventId: string, p: Partial<LineAddedPayload> = {}): OrderEve
       unitPriceMinor: 100n,
       vatRateBp: VAT_REDUCED_BP,
       fulfilment: 'EAT_IN',
+      modifiers: [],
       ...p,
     },
   }
 }
 
-function modifierApplied(
-  eventId: string,
-  p: Partial<ModifierAppliedPayload> & { lineId: string },
-): OrderEvent {
-  return {
-    eventId,
-    aggregateId: OID,
-    occurredAt: OCC,
-    eventType: 'ModifierApplied',
-    payload: {
-      modifierId: 'mod',
-      name: 'Extra',
-      unitPriceMinor: 50n,
-      vatRateBp: VAT_STANDARD_BP,
-      ...p,
-    },
-  }
-}
-
-function lineVoided(eventId: string, lineId: string): OrderEvent {
+function lineVoided(eventId: string, lineId: string, quantity?: bigint): OrderEvent {
   return {
     eventId,
     aggregateId: OID,
     occurredAt: OCC,
     eventType: 'LineVoided',
-    payload: { lineId },
+    payload: { lineId, ...(quantity !== undefined ? { quantity } : {}) },
   }
 }
 
@@ -111,13 +88,19 @@ describe('happy path', () => {
   })
 })
 
-describe('snapshot / modifiers / bands', () => {
-  it('sums line + modifier across quantity and splits VAT into the right bands', () => {
-    // 2 × (coffee €3.00 @ 13.5% + extra shot €0.50 @ 23%)
+describe('snapshot / embedded modifiers / bands', () => {
+  it('sums line + embedded modifier across quantity and splits VAT into the right bands', () => {
+    // 2 × (coffee €3.00 @ 13.5% + extra shot €0.50 @ 23%) — the modifier travels inside LineAdded.
     const events = [
       opened(),
-      lineAdded('e-1', { quantity: 2n, unitPriceMinor: 300n, vatRateBp: VAT_REDUCED_BP }),
-      modifierApplied('e-2', { lineId: 'e-1', unitPriceMinor: 50n, vatRateBp: VAT_STANDARD_BP }),
+      lineAdded('e-1', {
+        quantity: 2n,
+        unitPriceMinor: 300n,
+        vatRateBp: VAT_REDUCED_BP,
+        modifiers: [
+          { modifierId: 'm', name: 'Extra shot', unitPriceMinor: 50n, vatRateBp: VAT_STANDARD_BP },
+        ],
+      }),
     ]
     const t = computeTotals(reduceOrder(events))
     expect(t.subtotalMinor).toBe(700n) // 2*300 + 2*50
@@ -143,15 +126,37 @@ describe('voiding', () => {
     expect(t.vatMinor).toBe(0n)
   })
 
-  it('rejects voiding a line twice', () => {
-    const events = [opened(), lineAdded('e-1'), lineVoided('e-2', 'e-1'), lineVoided('e-3', 'e-1')]
-    expect(() => reduceOrder(events)).toThrowError(OrderReductionError)
+  it('voids part of a quantity line, leaving the rest to sell', () => {
+    // 3 × €2.00; void 1 → 2 remain → €4.00.
+    const events = [
+      opened(),
+      lineAdded('e-1', { quantity: 3n, unitPriceMinor: 200n, vatRateBp: VAT_STANDARD_BP }),
+      lineVoided('e-2', 'e-1', 1n),
+    ]
+    const t = computeTotals(reduceOrder(events))
+    expect(t.subtotalMinor).toBe(400n)
+    expect(t.totalMinor).toBe(400n)
+
+    const [line] = reduceOrder(events).lines
+    expect(line?.voidedQuantity).toBe(1n)
   })
 
-  it('rejects modifying a missing line', () => {
-    expect(() => reduceOrder([opened(), modifierApplied('e-1', { lineId: 'nope' })])).toThrowError(
-      /LINE_NOT_FOUND/,
-    )
+  it('rejects voiding more units than remain active', () => {
+    const events = [
+      opened(),
+      lineAdded('e-1', { quantity: 2n }),
+      lineVoided('e-2', 'e-1', 3n),
+    ]
+    expect(() => reduceOrder(events)).toThrowError(/VOID_EXCEEDS_ACTIVE/)
+  })
+
+  it('rejects voiding an already fully-voided line', () => {
+    const events = [opened(), lineAdded('e-1'), lineVoided('e-2', 'e-1'), lineVoided('e-3', 'e-1')]
+    expect(() => reduceOrder(events)).toThrowError(/ALREADY_VOIDED/)
+  })
+
+  it('rejects voiding a missing line', () => {
+    expect(() => reduceOrder([opened(), lineVoided('e-1', 'nope')])).toThrowError(/LINE_NOT_FOUND/)
   })
 })
 
@@ -238,9 +243,15 @@ describe('lifecycle guards', () => {
 // --- Model-based property tests ---------------------------------------------------------------
 
 type Action =
-  | { t: 'addLine'; qty: number; priceMinor: bigint; rateBp: number; mode: 'EAT_IN' | 'TAKEAWAY' }
-  | { t: 'modify'; lineIdx: number; priceMinor: bigint; rateBp: number }
-  | { t: 'void'; lineIdx: number }
+  | {
+      t: 'addLine'
+      qty: number
+      priceMinor: bigint
+      rateBp: number
+      mode: 'EAT_IN' | 'TAKEAWAY'
+      mod: { priceMinor: bigint; rateBp: number } | null
+    }
+  | { t: 'void'; lineIdx: number; units: number | null }
   | { t: 'discountPct'; rateBp: number }
   | { t: 'discountAmt'; amountMinor: bigint }
   | { t: 'tender'; pct: number }
@@ -254,7 +265,8 @@ function buildScenario(fulfilment: 'EAT_IN' | 'TAKEAWAY', actions: Action[]): Or
     events.push(event)
     return event.eventId
   }
-  const lines: { id: string; voided: boolean }[] = []
+  // Track each line's total and already-voided quantity so generated voids never exceed what's active.
+  const lines: { id: string; qty: bigint; voided: bigint }[] = []
 
   push(opened(nextId(), { fulfilment }))
 
@@ -267,30 +279,23 @@ function buildScenario(fulfilment: 'EAT_IN' | 'TAKEAWAY', actions: Action[]): Or
             unitPriceMinor: a.priceMinor,
             vatRateBp: a.rateBp,
             fulfilment: a.mode,
+            modifiers: a.mod
+              ? [{ modifierId: 'm', name: 'Extra', unitPriceMinor: a.mod.priceMinor, vatRateBp: a.mod.rateBp }]
+              : [],
           }),
         )
-        lines.push({ id, voided: false })
-        break
-      }
-      case 'modify': {
-        const active = lines.filter((l) => !l.voided)
-        if (active.length === 0) break
-        const target = active[a.lineIdx % active.length]!
-        push(
-          modifierApplied(nextId(), {
-            lineId: target.id,
-            unitPriceMinor: a.priceMinor,
-            vatRateBp: a.rateBp,
-          }),
-        )
+        lines.push({ id, qty: BigInt(a.qty), voided: 0n })
         break
       }
       case 'void': {
-        const active = lines.filter((l) => !l.voided)
+        const active = lines.filter((l) => l.voided < l.qty)
         if (active.length === 0) break
         const target = active[a.lineIdx % active.length]!
-        push(lineVoided(nextId(), target.id))
-        target.voided = true
+        const remaining = target.qty - target.voided
+        const units =
+          a.units === null ? remaining : (BigInt(a.units) % remaining) + 1n // in [1, remaining]
+        push(lineVoided(nextId(), target.id, a.units === null ? undefined : units))
+        target.voided += units
         break
       }
       case 'discountPct':
@@ -333,14 +338,16 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
     priceMinor: fc.bigInt({ min: 0n, max: 2000n }),
     rateBp: rateArb,
     mode: fc.constantFrom('EAT_IN' as const, 'TAKEAWAY' as const),
+    mod: fc.option(
+      fc.record({ priceMinor: fc.bigInt({ min: 0n, max: 500n }), rateBp: rateArb }),
+      { nil: null },
+    ),
   }),
   fc.record({
-    t: fc.constant('modify' as const),
+    t: fc.constant('void' as const),
     lineIdx: fc.nat(),
-    priceMinor: fc.bigInt({ min: 0n, max: 500n }),
-    rateBp: rateArb,
+    units: fc.option(fc.nat({ max: 6 }), { nil: null }),
   }),
-  fc.record({ t: fc.constant('void' as const), lineIdx: fc.nat() }),
   fc.record({ t: fc.constant('discountPct' as const), rateBp: fc.integer({ min: 0, max: 5000 }) }),
   fc.record({
     t: fc.constant('discountAmt' as const),
@@ -369,10 +376,11 @@ describe('invariants over random valid streams', () => {
         expect(bandGross).toBe(t.totalMinor) // discount pushed onto bands sums back exactly
         for (const b of t.vatByBand) expect(b.netMinor + b.vatMinor).toBe(b.grossMinor)
       }),
+      { numRuns: 1000 },
     )
   })
 
-  it('is a deterministic fold — incremental equals all-at-once', () => {
+  it('is a deterministic fold — incremental equals all-at-once (replay = projection)', () => {
     fc.assert(
       fc.property(fulfilmentArb, fc.array(actionArb, { maxLength: 25 }), (mode, actions) => {
         const events = buildScenario(mode, actions)
@@ -380,6 +388,147 @@ describe('invariants over random valid streams', () => {
         for (const e of events) state = reduce(state, e)
         expect(state).toEqual(reduceOrder(events))
       }),
+      { numRuns: 1000 },
+    )
+  })
+
+  it('voiding every line fully returns the order to zero', () => {
+    fc.assert(
+      fc.property(fulfilmentArb, fc.array(actionArb, { maxLength: 25 }), (mode, actions) => {
+        const base = buildScenario(mode, actions)
+        // Void every line still active, in full.
+        const state = reduceOrder(base)
+        let n = base.length
+        const voids: OrderEvent[] = []
+        for (const line of state.lines) {
+          if (line.voidedQuantity < line.quantity) voids.push(lineVoided(`v-${n++}`, line.lineId))
+        }
+        const t = computeTotals(reduceOrder([...base, ...voids]))
+        expect(t.subtotalMinor).toBe(0n)
+        expect(t.totalMinor).toBe(0n)
+        expect(t.vatMinor).toBe(0n)
+      }),
+    )
+  })
+})
+
+// --- Command/event split (ADR 0007) -----------------------------------------------------------
+
+const ctx = (aggregateId: string, eventId = 'cmd-evt'): DecideContext => ({
+  eventId,
+  aggregateId,
+  occurredAt: OCC,
+})
+
+describe('decide (command → events)', () => {
+  it('builds a full order end to end, each command folding cleanly', () => {
+    // A holder object rather than a bare `let` — reassignment inside the `apply` closure keeps the
+    // type as `OrderState | null` for the assertions below (a closure-mutated `let` narrows to null).
+    const box: { state: OrderState | null } = { state: null }
+    let seq = 0
+    const apply = (command: OrderCommand, aggregateId: string) => {
+      const result = decide(box.state, command, ctx(aggregateId, `c-${seq++}`))
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      for (const ev of result.value) box.state = reduce(box.state, ev)
+    }
+
+    apply({ type: 'OpenOrder', fulfilment: 'EAT_IN' }, OID)
+    apply(
+      { type: 'AddLine', productId: 'p', name: 'Flat White', quantity: 1n, unitPriceMinor: 350n, vatRateBp: VAT_REDUCED_BP, fulfilment: 'EAT_IN' },
+      OID,
+    )
+    apply({ type: 'Tender', tenderId: 't', method: 'CASH', amountMinor: 350n, tenderedMinor: 350n, changeMinor: 0n }, OID)
+    apply({ type: 'CloseOrder' }, OID)
+
+    expect(box.state?.status).toBe('CLOSED')
+    expect(box.state && computeTotals(box.state).totalMinor).toBe(350n)
+  })
+
+  it('returns an error (never throws) for an invalid command', () => {
+    const state = reduceOrder([opened(), lineAdded('e-1', { unitPriceMinor: 500n })])
+    const result = decide(state, { type: 'VoidLine', lineId: 'missing' }, ctx(OID))
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error.code).toBe('LINE_NOT_FOUND')
+  })
+
+  it('rejects closing an unpaid order as a DomainError, not a throw', () => {
+    const state = reduceOrder([opened(), lineAdded('e-1', { unitPriceMinor: 500n })])
+    const result = decide(state, { type: 'CloseOrder' }, ctx(OID))
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error.code).toBe('UNPAID')
+  })
+
+  // The core ADR-0007 guarantee: decide never emits an event that reduce throws on.
+  type CommandSpec =
+    | { k: 'add' }
+    | { k: 'voidFirst'; units: number | null }
+    | { k: 'discountPct'; rateBp: number }
+    | { k: 'discountAmt'; amountMinor: bigint }
+    | { k: 'tenderAll' }
+    | { k: 'close' }
+    | { k: 'refund'; amountMinor: bigint }
+
+  const commandArb: fc.Arbitrary<CommandSpec> = fc.oneof(
+    fc.constant({ k: 'add' as const }),
+    fc.record({ k: fc.constant('voidFirst' as const), units: fc.option(fc.nat({ max: 4 }), { nil: null }) }),
+    fc.record({ k: fc.constant('discountPct' as const), rateBp: fc.integer({ min: 0, max: 10000 }) }),
+    fc.record({ k: fc.constant('discountAmt' as const), amountMinor: fc.bigInt({ min: 0n, max: 5000n }) }),
+    fc.constant({ k: 'tenderAll' as const }),
+    fc.constant({ k: 'close' as const }),
+    fc.record({ k: fc.constant('refund' as const), amountMinor: fc.bigInt({ min: 0n, max: 5000n }) }),
+  )
+
+  function toCommand(spec: CommandSpec, state: OrderState): OrderCommand {
+    switch (spec.k) {
+      case 'add':
+        return { type: 'AddLine', productId: 'p', name: 'X', quantity: 2n, unitPriceMinor: 250n, vatRateBp: VAT_REDUCED_BP, fulfilment: state.fulfilment }
+      case 'voidFirst': {
+        const target = state.lines[0]
+        return {
+          type: 'VoidLine',
+          lineId: target?.lineId ?? 'missing',
+          ...(spec.units === null ? {} : { quantity: BigInt(spec.units) }),
+        }
+      }
+      case 'discountPct':
+        return { type: 'ApplyDiscount', discount: { discountId: 'd', name: 'p', kind: 'PERCENT', rateBp: spec.rateBp } }
+      case 'discountAmt':
+        return { type: 'ApplyDiscount', discount: { discountId: 'd', name: 'a', kind: 'AMOUNT', amountMinor: spec.amountMinor } }
+      case 'tenderAll': {
+        const bal = computeTotals(state).balanceMinor
+        return { type: 'Tender', tenderId: 't', method: 'CARD', amountMinor: bal > 0n ? bal : 1n }
+      }
+      case 'close':
+        return { type: 'CloseOrder' }
+      case 'refund':
+        return { type: 'RefundOrder', refundId: 'r', amountMinor: spec.amountMinor }
+      default:
+        return { type: 'CloseOrder' }
+    }
+  }
+
+  it('never emits an event that reduce throws on', () => {
+    fc.assert(
+      fc.property(
+        fulfilmentArb,
+        fc.array(actionArb, { maxLength: 15 }),
+        commandArb,
+        (mode, actions, spec) => {
+          const state = reduceOrder(buildScenario(mode, actions))
+          const command = toCommand(spec, state)
+          const result = decide(state, command, ctx(state.orderId))
+          if (result.ok) {
+            let s: OrderState | null = state
+            for (const ev of result.value) {
+              expect(() => {
+                s = reduce(s, ev)
+              }).not.toThrow()
+            }
+          }
+        },
+      ),
+      { numRuns: 1000 },
     )
   })
 })

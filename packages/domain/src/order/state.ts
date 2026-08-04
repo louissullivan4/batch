@@ -23,7 +23,8 @@ export interface OrderLine {
   readonly vatRateBp: VatRateBp
   readonly fulfilment: FulfilmentMode
   readonly modifiers: readonly OrderModifier[]
-  readonly voided: boolean
+  /** Units voided so far (ADR 0008). The active quantity is `quantity - voidedQuantity`. */
+  readonly voidedQuantity: bigint
 }
 
 export interface OrderDiscount {

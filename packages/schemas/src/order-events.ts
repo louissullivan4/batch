@@ -24,6 +24,14 @@ export const OrderOpenedPayloadSchema = z.object({
   staffId: z.string().optional(),
 })
 
+/** A modifier snapshotted onto a line at sale time (ADR 0008); embedded in `LineAdded`. */
+export const LineModifierSchema = z.object({
+  modifierId: z.string().min(1),
+  name: z.string().min(1),
+  unitPriceMinor: MoneyMinorSchema,
+  vatRateBp: VatRateBpSchema,
+})
+
 export const LineAddedPayloadSchema = z.object({
   productId: z.string().min(1),
   name: z.string().min(1),
@@ -31,18 +39,15 @@ export const LineAddedPayloadSchema = z.object({
   unitPriceMinor: MoneyMinorSchema,
   vatRateBp: VatRateBpSchema,
   fulfilment: FulfilmentSchema,
-})
-
-export const ModifierAppliedPayloadSchema = z.object({
-  lineId: UuidSchema,
-  modifierId: z.string().min(1),
-  name: z.string().min(1),
-  unitPriceMinor: MoneyMinorSchema,
-  vatRateBp: VatRateBpSchema,
+  // `.readonly()` so the inferred element array is `readonly`, matching the domain payload type
+  // (the drift guard at the foot of this file compares the two structurally, readonly included).
+  modifiers: z.array(LineModifierSchema).readonly(),
 })
 
 export const LineVoidedPayloadSchema = z.object({
   lineId: UuidSchema,
+  /** Units to void; omitted = void all remaining (ADR 0008). */
+  quantity: CountSchema.optional(),
   reason: z.string().optional(),
 })
 
@@ -95,11 +100,6 @@ export const OrderEventSchema = z.discriminatedUnion('eventType', [
     ...envelopeShape,
     eventType: z.literal('LineAdded'),
     payload: LineAddedPayloadSchema,
-  }),
-  z.object({
-    ...envelopeShape,
-    eventType: z.literal('ModifierApplied'),
-    payload: ModifierAppliedPayloadSchema,
   }),
   z.object({
     ...envelopeShape,
