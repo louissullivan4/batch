@@ -5,7 +5,7 @@ import { currentIdentity, initTill, loadStoredConfig, reconcile, refreshStats, s
 import { uuidv7, type LocalStats, type ReconcileReport, type SyncOutcome } from './sync'
 import { useOrder } from './useOrder'
 import { useShift, type VarianceInfo } from './useShift'
-import { STAFF_FIXTURE } from './auth/staff-fixture'
+import { STAFF_ROSTER, findStaff } from './auth/staff-source'
 import { Setup } from './screens/Setup'
 import { OrderEntry } from './screens/OrderEntry/OrderEntry'
 import { CashTender } from './screens/CashTender/CashTender'
@@ -295,7 +295,7 @@ export function App(): JSX.Element {
     onOpenMovements: handleOpenMovements,
   }
 
-  const counterName = STAFF_FIXTURE.find((s) => s.id === shiftHook.state?.currentStaffId)?.name ?? 'Staff'
+  const counterName = findStaff(shiftHook.state?.currentStaffId)?.name ?? 'Staff'
 
   return (
     <>
@@ -308,7 +308,7 @@ export function App(): JSX.Element {
       {screen === 'receipt' && closedSnapshot && <Receipt snapshot={closedSnapshot} headerProps={headerProps} onNewSale={handleNewSale} />}
 
       {screen === 'shift-open' && (
-        <ShiftOpen staff={STAFF_FIXTURE} syncState={syncState} onBack={() => setScreen('order')} onOpen={handleOpenShift} />
+        <ShiftOpen staff={STAFF_ROSTER} syncState={syncState} onBack={() => setScreen('order')} onOpen={handleOpenShift} />
       )}
 
       {screen === 'blind-count' && (
@@ -323,7 +323,7 @@ export function App(): JSX.Element {
       {screen === 'variance' && varianceInfo && (
         <VarianceResult
           variance={varianceInfo}
-          staff={STAFF_FIXTURE}
+          staff={STAFF_ROSTER}
           onRecount={() => setScreen('blind-count')}
           onReadyToClose={handleReadyToClose}
         />
@@ -345,7 +345,7 @@ export function App(): JSX.Element {
       {movementsOpen && (
         <div className="movements-scrim" onClick={() => setMovementsOpen(false)}>
           <div onClick={(e) => e.stopPropagation()}>
-            <CashMovements staff={STAFF_FIXTURE} onCancel={() => setMovementsOpen(false)} onCommit={handleMovementCommit} />
+            <CashMovements staff={STAFF_ROSTER} onCancel={() => setMovementsOpen(false)} onCommit={handleMovementCommit} />
           </div>
         </div>
       )}
