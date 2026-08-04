@@ -9,6 +9,8 @@
  * Nothing outside this module constructs a `Money`. Use `euro`, `minor`, or `zero`.
  */
 
+import { err, ok, type Result } from './result'
+
 export type Currency = 'EUR'
 
 export const DEFAULT_CURRENCY: Currency = 'EUR'
@@ -42,6 +44,36 @@ export function euro(units: number, cents = 0, currency: Currency = DEFAULT_CURR
 /** The additive identity for a currency. */
 export function zero(currency: Currency = DEFAULT_CURRENCY): Money {
   return minor(0n, currency)
+}
+
+/**
+ * Parse an amount the operator typed on a keypad into `Money`, rejecting anything ambiguous rather
+ * than guessing. Returns a `Result` — a bad entry is expected input, not a bug.
+ *
+ * Accepted (case/space tolerant, one optional leading `€`), all non-negative:
+ *   `"4"` → €4.00 · `"4.5"` → €4.50 · `"4.50"` → €4.50 · `"0.09"` → €0.09
+ *
+ * Rejected as ambiguous or malformed — with a reason:
+ *   - empty / whitespace only
+ *   - a comma (`"1,50"`): the decimal separator is `.`; a comma could mean €1.50 or a €1,50-grouping
+ *   - more than two decimal places (`"1.005"`): sub-cent, cannot be represented
+ *   - a leading or trailing separator (`".5"`, `"1."`)
+ *   - a sign, letters, a second `.`, or any other stray character
+ *
+ * Note this is the **decimal** reading: `"450"` is €450.00, not €4.50. A cents-entry keypad mode
+ * (type `450` → €4.50) is a different, and by itself ambiguous, convention and is not this function.
+ */
+export function parseKeypadInput(input: string, currency: Currency = DEFAULT_CURRENCY): Result<Money> {
+  const trimmed = input.trim().replace(/^€/, '').trim()
+  if (trimmed === '') return err('empty amount')
+  if (trimmed.includes(',')) return err(`use '.' as the decimal separator, not ',': "${input}"`)
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(trimmed)
+  if (!match) return err(`not a valid amount: "${input}"`)
+  const [, whole, frac] = match
+  // whole is guaranteed by the capture group; frac is the optional decimals.
+  const euros = BigInt(whole ?? '0')
+  const cents = BigInt((frac ?? '').padEnd(2, '0'))
+  return ok(minor(euros * 100n + cents, currency))
 }
 
 // --- Guards -----------------------------------------------------------------------------------

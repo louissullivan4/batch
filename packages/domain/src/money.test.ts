@@ -15,6 +15,7 @@ import {
   minor,
   multiply,
   negate,
+  parseKeypadInput,
   splitEvenly,
   subtract,
   sumMoney,
@@ -250,6 +251,43 @@ describe('formatting', () => {
         const digits = formatted.replace(/[^0-9]/g, '')
         const reparsed = BigInt(digits) * (formatted.startsWith('-') ? -1n : 1n)
         expect(reparsed).toBe(a)
+      }),
+    )
+  })
+})
+
+describe('parseKeypadInput', () => {
+  it('accepts whole, one-decimal, and two-decimal amounts', () => {
+    const cases: [string, bigint][] = [
+      ['4', 400n],
+      ['4.5', 450n],
+      ['4.50', 450n],
+      ['0.09', 9n],
+      ['0', 0n],
+      ['450', 45000n], // decimal reading: €450.00, not €4.50
+      [' €12.34 ', 1234n], // tolerates a leading symbol and surrounding space
+    ]
+    for (const [input, expected] of cases) {
+      const r = parseKeypadInput(input)
+      expect(r.ok, `expected "${input}" to parse`).toBe(true)
+      if (r.ok) expect(r.value.amountMinor).toBe(expected)
+    }
+  })
+
+  it('rejects ambiguous or malformed input without throwing', () => {
+    for (const bad of ['', '   ', '1,50', '1.005', '.5', '1.', '-1', '1.2.3', 'abc', '€', '1e3', '1 2']) {
+      const r = parseKeypadInput(bad)
+      expect(r.ok, `expected "${bad}" to be rejected`).toBe(false)
+    }
+  })
+
+  it('is the inverse of formatting for any non-negative amount', () => {
+    fc.assert(
+      fc.property(fc.bigInt({ min: 0n, max: 100_000_000n }), (a) => {
+        const text = formatMinor(a).replace('€', '') // "1234.50"
+        const r = parseKeypadInput(text)
+        expect(r.ok).toBe(true)
+        if (r.ok) expect(r.value.amountMinor).toBe(a)
       }),
     )
   })
