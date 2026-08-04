@@ -2,6 +2,7 @@ import {
   computeTotals,
   reduceOrder,
   type FulfilmentMode,
+  type LineModifier,
   type OrderEvent,
   type VatRateBp,
 } from '@batch/domain'
@@ -41,6 +42,7 @@ export function addLine(
     unitPriceMinor: bigint
     vatRateBp: VatRateBp
     fulfilment: FulfilmentMode
+    modifiers?: readonly LineModifier[]
   },
 ): OutgoingEvent {
   const event: OrderEvent = {
@@ -48,7 +50,7 @@ export function addLine(
     aggregateId: orderId,
     occurredAt: now(),
     eventType: 'LineAdded',
-    payload: line,
+    payload: { ...line, modifiers: line.modifiers ?? [] },
   }
   return { aggregateType: 'order', event }
 }

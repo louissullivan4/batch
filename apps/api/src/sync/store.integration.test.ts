@@ -71,6 +71,7 @@ function line(eventId: string, aggregateId: string, unitPriceMinor: bigint): Ord
       unitPriceMinor,
       vatRateBp: 1350,
       fulfilment: 'EAT_IN',
+      modifiers: [],
     },
   }
 }
@@ -129,6 +130,29 @@ run('sync store against real Postgres', () => {
       processSyncBatch(createPgStore(c), DEVICE, batch),
     )
     expect(replay.results.map((r) => r.status)).toEqual(['duplicate', 'duplicate'])
+  })
+
+  it('rejects a deliberately wrong client total and does not persist it', async () => {
+    // The line is 2 × €3.50 = €7.00; the client claims €6.66. The server re-derives with the shared
+    // reducer and must reject — against real Postgres, and the rejected row must not land.
+    const oid = '0190b4c2-1e3a-7c8d-8f2a-00000000dead'
+    const goodOpen = opened(uid(50), oid)
+    const wrongLine = line(uid(51), oid, 350n) // total 700; we lie about it below
+    const res = await withTenantTx(app, TENANT_A, (c) =>
+      processSyncBatch(createPgStore(c), DEVICE, {
+        events: [
+          { aggregateType: 'order', event: goodOpen },
+          { aggregateType: 'order', expectedTotalMinor: 666n, event: wrongLine },
+        ],
+      } satisfies SyncRequest),
+    )
+    expect(res.results[0]!.status).toBe('accepted')
+    expect(res.results[1]!.status).toBe('rejected')
+    expect(res.results[1]!.error).toContain('TOTAL_MISMATCH')
+
+    // The rejected event must not have been appended.
+    const seq = await withTenantTx(app, TENANT_A, (c) => createPgStore(c).findSeq(uid(51)))
+    expect(seq).toBeNull()
   })
 
   it('isolates tenants: B cannot see A’s events (RLS, not a WHERE clause)', async () => {

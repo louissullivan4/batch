@@ -81,6 +81,7 @@ function line(eventId: string, unitPriceMinor: bigint): OrderEvent {
       unitPriceMinor,
       vatRateBp: 1350,
       fulfilment: 'EAT_IN',
+      modifiers: [],
     },
   }
 }
@@ -179,20 +180,14 @@ describe('processSyncBatch', () => {
 
   it('rejects an invalid event with its reducer code', async () => {
     const store = new FakeStore()
-    const badModifier: OrderEvent = {
+    const badVoid: OrderEvent = {
       eventId: 'e1',
       aggregateId: OID,
       occurredAt: OCC,
-      eventType: 'ModifierApplied',
-      payload: {
-        lineId: 'missing',
-        modifierId: 'm',
-        name: 'Extra',
-        unitPriceMinor: 50n,
-        vatRateBp: 2300,
-      },
+      eventType: 'LineVoided',
+      payload: { lineId: 'missing', reason: 'oops' },
     }
-    const res = await processSyncBatch(store, DEVICE, req(order(open('e0')), order(badModifier)))
+    const res = await processSyncBatch(store, DEVICE, req(order(open('e0')), order(badVoid)))
     expect(res.results[0]!.status).toBe('accepted')
     expect(res.results[1]!.status).toBe('rejected')
     expect(res.results[1]!.error).toBe('LINE_NOT_FOUND')

@@ -30,6 +30,7 @@ const lineWire = {
     unitPriceMinor: '350',
     vatRateBp: 1350,
     fulfilment: 'EAT_IN',
+    modifiers: [],
   },
 }
 
@@ -84,10 +85,34 @@ describe('wire round-trip', () => {
         unitPriceMinor: 350n,
         vatRateBp: 1350,
         fulfilment: 'EAT_IN' as const,
+        modifiers: [],
       },
     }
     const parsed = OrderEventSchema.parse(toWire(domainEvent))
     expect(parsed).toEqual(domainEvent)
+  })
+
+  it('round-trips an embedded modifier, its money crossing as a string', () => {
+    const domainEvent = {
+      eventId: E_LINE,
+      aggregateId: ORDER_ID,
+      occurredAt: OCC,
+      eventType: 'LineAdded' as const,
+      payload: {
+        productId: 'flat-white',
+        name: 'Flat White',
+        quantity: 1n,
+        unitPriceMinor: 300n,
+        vatRateBp: 1350,
+        fulfilment: 'EAT_IN' as const,
+        modifiers: [
+          { modifierId: 'oat', name: 'Oat milk', unitPriceMinor: 50n, vatRateBp: 2300 },
+        ],
+      },
+    }
+    const wire = toWire(domainEvent) as { payload: { modifiers: { unitPriceMinor: unknown }[] } }
+    expect(wire.payload.modifiers[0]!.unitPriceMinor).toBe('50') // string on the wire
+    expect(OrderEventSchema.parse(toWire(domainEvent))).toEqual(domainEvent)
   })
 })
 
