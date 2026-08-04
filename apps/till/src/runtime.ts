@@ -233,3 +233,42 @@ export async function reconcile(): Promise<ReconcileReport> {
   const { store, kv, transport, tenantId } = requireRuntime()
   return reconcileOnStartup({ store, kv, transport, tenantId })
 }
+
+/**
+ * Sum CASH `OrderTendered` amounts recorded locally at or after `sinceIso` (ADR 0010's
+ * cross-aggregate seam: the shift reducer stays pure over its own stream, so `cashSalesMinor` is
+ * supplied by the caller from the order aggregate). A device has at most one open shift, so every
+ * cash tender since it opened belongs to it — no `shiftId` stamp on orders is needed this sprint.
+ * Reads the local event log directly (same pattern as `sync/outbox.ts`'s `localStats`); money is
+ * stored as a decimal string in the JSON payload and parsed back to `bigint` here, never a `number`.
+ */
+export async function cashSalesSinceMinor(sinceIso: string): Promise<bigint> {
+  const { store } = requireRuntime()
+  const rows = await store.select<{ payload: string }>(
+    `select payload from events where aggregate_type = 'order' and event_type = 'OrderTendered' and occurred_at >= ?`,
+    [sinceIso],
+  )
+  let sum = 0n
+  for (const row of rows) {
+    const payload = JSON.parse(row.payload) as { method?: string; amountMinor?: string }
+    if (payload.method === 'CASH' && typeof payload.amountMinor === 'string') {
+      sum += BigInt(payload.amountMinor)
+    }
+  }
+  return sum
+}
+
+/**
+ * The next per-device Z sequence number (ADR 0010: `{deviceId}-{n}`, stable offline). Counts prior
+ * local `ShiftClosed` events — the local store only ever holds this device's own shift events (its
+ * own writes, plus a bounded down-pull of its own history on resync), so no extra device filter is
+ * needed here.
+ */
+export async function nextZNumber(): Promise<string> {
+  const { store, identity } = requireRuntime()
+  const rows = await store.select<{ n: number }>(
+    `select count(*) as n from events where aggregate_type = 'shift' and event_type = 'ShiftClosed'`,
+  )
+  const n = (rows[0]?.n ?? 0) + 1
+  return `${identity.deviceId}-${n}`
+}
