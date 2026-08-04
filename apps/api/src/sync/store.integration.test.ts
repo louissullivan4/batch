@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import pg from 'pg'
-import type { OrderEvent } from '@batch/domain'
+import type { OrderEvent, shift } from '@batch/domain'
 import type { SyncRequest } from '@batch/schemas'
 import { withTenantTx } from '../db'
 import { processSyncBatch } from './service'
@@ -74,6 +74,11 @@ function line(eventId: string, aggregateId: string, unitPriceMinor: bigint): Ord
       modifiers: [],
     },
   }
+}
+
+const SID_A = '0190b4c2-1e3a-7c8d-8f2a-00000000005f'
+function shiftEv(eventId: string, aggregateId: string, eventType: string, payload: unknown): shift.ShiftEvent {
+  return { eventId, aggregateId, occurredAt: OCC, eventType, payload } as shift.ShiftEvent
 }
 
 run('sync store against real Postgres', () => {
@@ -218,5 +223,35 @@ run('sync store against real Postgres', () => {
     // Another device sees nothing of DEVICE2's stream.
     const other = await withTenantTx(app, TENANT_A, (c) => createPgStore(c).deviceHighWater(DEVICE))
     expect(other.eventCount).toBeGreaterThanOrEqual(0)
+  })
+
+  it('runs a shift lifecycle: appends, seals Z server-side, round-trips money as bigint', async () => {
+    const lifecycle: SyncRequest = {
+      events: [
+        { aggregateType: 'shift', event: shiftEv(uid(60), SID_A, 'ShiftOpened', { deviceId: DEVICE, openedByStaffId: 'staff-1', currency: 'EUR' }) },
+        { aggregateType: 'shift', event: shiftEv(uid(61), SID_A, 'CashDeclared', { purpose: 'OPENING_FLOAT', countSeq: 0n, denominations: [{ denominationMinor: 5000n, count: 3n }], countedMinor: 15000n }) },
+        { aggregateType: 'shift', event: shiftEv(uid(62), SID_A, 'PaidOut', { movementId: uid(63), amountMinor: 500n, reason: 'Milk run', authStaffId: 'staff-1' }) },
+        { aggregateType: 'shift', event: shiftEv(uid(64), SID_A, 'CashDeclared', { purpose: 'COUNT', countSeq: 1n, denominations: [{ denominationMinor: 5000n, count: 2n }, { denominationMinor: 2000n, count: 2n }], countedMinor: 14000n }) },
+        { aggregateType: 'shift', event: shiftEv(uid(65), SID_A, 'ShiftClosed', { zNumber: `${DEVICE}-1`, closedByStaffId: 'staff-1', finalCountSeq: 1n, varianceMinor: -500n, reasonCodes: [], authorised: true }) },
+      ],
+    }
+    const res = await withTenantTx(app, TENANT_A, (c) => processSyncBatch(createPgStore(c), DEVICE, lifecycle))
+    expect(res.results.map((r) => r.status)).toEqual(['accepted', 'accepted', 'accepted', 'accepted', 'accepted'])
+
+    // Z-seal is a replay invariant enforced server-side: a second ShiftClosed is rejected, not stored.
+    const dbl = await withTenantTx(app, TENANT_A, (c) =>
+      processSyncBatch(createPgStore(c), DEVICE, {
+        events: [{ aggregateType: 'shift', event: shiftEv(uid(66), SID_A, 'ShiftClosed', { zNumber: `${DEVICE}-2`, closedByStaffId: 'staff-1', finalCountSeq: 1n, varianceMinor: 0n, reasonCodes: [], authorised: true }) }],
+      }),
+    )
+    expect(dbl.results[0]!.status).toBe('rejected')
+    expect(dbl.results[0]!.error).toBe('SHIFT_CLOSED')
+    expect(await withTenantTx(app, TENANT_A, (c) => createPgStore(c).findSeq(uid(66)))).toBeNull()
+
+    // Money re-parses from jsonb as bigint via the shift schema in the store.
+    const loaded = await withTenantTx(app, TENANT_A, (c) => createPgStore(c).loadAggregateEvents('shift', SID_A))
+    expect(loaded.map((e) => e.eventType)).toEqual(['ShiftOpened', 'CashDeclared', 'PaidOut', 'CashDeclared', 'ShiftClosed'])
+    const count = loaded.find((e) => e.eventType === 'CashDeclared' && (e.payload as { purpose: string }).purpose === 'COUNT')
+    expect((count!.payload as { countedMinor: bigint }).countedMinor).toBe(14000n)
   })
 })
