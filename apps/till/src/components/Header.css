@@ -61,6 +61,31 @@
   background: var(--tint-neutral);
 }
 
+.shift-pill[data-open='false'] {
+  border-color: var(--color-offline-neutral);
+  color: var(--color-offline-neutral);
+}
+
+.movements-btn {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+}
+
+.movements-btn:active {
+  background: var(--tint-neutral);
+}
+
+.movements-btn:disabled {
+  opacity: 0.45;
+}
+
 .sync-pill-wrap {
   position: relative;
 }

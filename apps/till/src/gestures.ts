@@ -54,6 +54,53 @@ export function useTileGesture(onTap: () => void, onLongPress: () => void): Tile
   return { onPointerDown, onPointerUp, onPointerLeave: clearTimer, onPointerCancel: clearTimer }
 }
 
+const REPEAT_START_MS = 500
+const REPEAT_INTERVAL_MS = 200 // 5/s (SPEC "long-press repeats at 5/s" — Screen 1/3 denomination steppers)
+
+export interface RepeatPressHandlers {
+  readonly onPointerDown: () => void
+  readonly onPointerUp: () => void
+  readonly onPointerLeave: () => void
+  readonly onPointerCancel: () => void
+}
+
+/**
+ * A stepper button that fires once on tap and, if held past 500ms, repeats at 5/s until released
+ * (SPEC denomination counter). Distinct from `useTileGesture`: a stepper's long-press *repeats the
+ * same action*, it doesn't switch to a different one.
+ */
+export function useRepeatPress(onStep: () => void): RepeatPressHandlers {
+  const startTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const repeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const firedOnceRef = useRef(false)
+
+  const clearTimers = useCallback(() => {
+    if (startTimerRef.current !== null) {
+      clearTimeout(startTimerRef.current)
+      startTimerRef.current = null
+    }
+    if (repeatTimerRef.current !== null) {
+      clearInterval(repeatTimerRef.current)
+      repeatTimerRef.current = null
+    }
+  }, [])
+
+  const onPointerDown = useCallback(() => {
+    firedOnceRef.current = true
+    onStep() // immediate first step on tap-down, same as a plain button
+    startTimerRef.current = setTimeout(() => {
+      repeatTimerRef.current = setInterval(onStep, REPEAT_INTERVAL_MS)
+    }, REPEAT_START_MS)
+  }, [onStep])
+
+  const onPointerUp = useCallback(() => {
+    clearTimers()
+    firedOnceRef.current = false
+  }, [clearTimers])
+
+  return { onPointerDown, onPointerUp, onPointerLeave: onPointerUp, onPointerCancel: onPointerUp }
+}
+
 /** Same 500ms long-press, no short-tap action — used by the wordmark to reach diagnostics. */
 export function useLongPressOnly(onLongPress: () => void): {
   onPointerDown: () => void

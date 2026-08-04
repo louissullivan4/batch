@@ -4,3 +4,16 @@
  * task 1: no hex literal outside `theme/tokens.css`). `base.css` already sizes `html/body/#root` to
  * 100% height; this file is a placeholder kept for any true app-shell-level style.
  */
+
+/* Cash movements (SPEC Screen 2) opens as a sheet over whatever screen is underneath — the order
+   stays untouched. Fixed (not absolute) so it overlays regardless of which screen is mounted. */
+.movements-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  z-index: 500;
+}

@@ -1,0 +1,173 @@
+.reports {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+}
+
+.reports-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  gap: var(--space-xl);
+  padding: var(--space-xl);
+}
+
+.report-panel {
+  flex: 1;
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* X — a light raised card. If the screen looks dark, you're in Z territory (SPEC). */
+.report-panel--x {
+  background: var(--color-raised);
+  box-shadow: var(--shadow-raised);
+}
+
+.report-panel--x h2 {
+  margin: 0;
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  color: var(--color-text);
+}
+
+.report-x-caption {
+  margin: 0;
+  font-size: var(--type-caption-size);
+  color: var(--color-text-muted);
+}
+
+.report-x-figures {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.report-x-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--type-body-size);
+  color: var(--color-text);
+}
+
+.report-x-run {
+  min-height: var(--touch-primary);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-accent);
+  background: var(--color-raised);
+  color: var(--color-accent);
+  font-size: var(--type-item-size);
+  font-weight: 600;
+}
+
+.report-x-run:active {
+  background: var(--tint-accent);
+  box-shadow: var(--shadow-pressed);
+}
+
+.report-x-meta {
+  margin: 0;
+  font-size: var(--type-caption-size);
+  color: var(--color-text-muted);
+}
+
+.report-count-cta {
+  margin-top: auto;
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.report-count-btn {
+  width: 100%;
+  min-height: var(--touch-primary);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: var(--type-item-size);
+  font-weight: 600;
+}
+
+.report-count-btn:active {
+  background: var(--tint-neutral);
+}
+
+.report-count-btn:disabled {
+  opacity: 0.45;
+}
+
+/* Z — the only ink-dark panel in the product (SPEC: #1C1917, which is exactly --color-text). White
+   text on the right reuses the established "white ink on a dark/accent fill" pairing (see icons.tsx
+   CheckboxGlyph) — --color-raised (#FFFFFF) stands in for "white ink", no new hex needed. */
+.report-panel--z {
+  background: var(--color-text);
+  color: var(--color-raised);
+  align-items: flex-end;
+  text-align: right;
+}
+
+.report-panel--z h2 {
+  margin: 0;
+  align-self: flex-end;
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  color: var(--color-raised);
+}
+
+.report-z-caption,
+.report-z-body {
+  margin: 0;
+  max-width: 320px;
+  font-size: var(--type-body-size);
+  color: color-mix(in srgb, var(--color-raised) 80%, transparent);
+}
+
+.report-z-hold {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: var(--touch-primary);
+  margin-top: auto;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-raised);
+  font-size: var(--type-item-size);
+  font-weight: 600;
+}
+
+.report-z-hold:disabled {
+  opacity: 0.45;
+}
+
+.report-z-hold-ring {
+  position: absolute;
+  inset: 0;
+  background: var(--color-accent-pressed);
+  transform-origin: left center;
+  transform: scaleX(0);
+  will-change: transform;
+}
+
+.report-z-hold-label {
+  position: relative;
+  z-index: 1;
+}
+
+.report-z-sealed {
+  margin: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-raised);
+  font-size: var(--type-item-size);
+  font-weight: 600;
+}

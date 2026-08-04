@@ -1,41 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { shift } from '@batch/domain'
 import './App.css'
-import {
-  currentIdentity,
-  initTill,
-  loadStoredConfig,
-  reconcile,
-  refreshStats,
-  syncNow,
-  type TillConfig,
-} from './runtime'
+import { currentIdentity, initTill, loadStoredConfig, reconcile, refreshStats, syncNow, type TillConfig } from './runtime'
 import { uuidv7, type LocalStats, type ReconcileReport, type SyncOutcome } from './sync'
 import { useOrder } from './useOrder'
+import { useShift, type VarianceInfo } from './useShift'
+import { STAFF_FIXTURE } from './auth/staff-fixture'
 import { Setup } from './screens/Setup'
 import { OrderEntry } from './screens/OrderEntry/OrderEntry'
 import { CashTender } from './screens/CashTender/CashTender'
 import { Receipt, type ClosedOrderSnapshot } from './screens/Receipt/Receipt'
+import { ShiftOpen } from './screens/ShiftOpen/ShiftOpen'
+import { CashMovements } from './screens/CashMovements/CashMovements'
+import { BlindCount } from './screens/BlindCount/BlindCount'
+import { VarianceResult, type PendingClose } from './screens/VarianceResult/VarianceResult'
+import { Reports } from './screens/Reports/Reports'
 import { Toast, type ToastState } from './components/Toast'
 import { DiagnosticsDrawer } from './components/DiagnosticsDrawer'
 import { StoragePreflight } from './components/StoragePreflight'
 import type { HeaderProps, SyncPillState } from './components/Header'
 
 /**
- * Sprint 3 till: the designed barista UI (Screens 1-4), replacing the Sprint 1 harness. Screen
- * routing is in-memory state — `order → tender → receipt` — never a URL router; a barista never
- * needs a back button that isn't the SPEC's own "Back to order".
- *
- * Staff auth is a Sprint 4 concern (device token + local PIN, root CLAUDE.md non-negotiable #5), so
- * the operator identity here is a static stub, not a login. Shifts are also Sprint 4; the header's
- * shift pill is a non-functional stub that toasts rather than opening real shift actions.
+ * The till: Screens 1-4 (Sprint 3, order/tender/receipt) plus the Sprint 4 shift & cash screens.
+ * Screen routing is in-memory state — never a URL router; a barista never needs a back button that
+ * isn't the SPEC's own "Back to order" / "Cancel". Staff auth for the *order* path stays a stub
+ * (STAFF_NAME_STUB) — non-negotiable #5 exempts order-entry/cash-tender/PIN from any gating that
+ * would slow the sale down; the shift screens are where real PIN auth (ADR 0009) lives this sprint.
  */
 
-// Sprint 4 will replace this with the authenticated staff member from the local PIN check.
 const STAFF_NAME_STUB = 'Aoife'
 
 const DEFAULT_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:3000'
 
-type Screen = 'order' | 'tender' | 'receipt'
+type Screen = 'order' | 'tender' | 'receipt' | 'shift-open' | 'blind-count' | 'variance' | 'reports'
 
 export function App(): JSX.Element {
   const [tenantId, setTenantId] = useState('')
@@ -56,6 +53,13 @@ export function App(): JSX.Element {
   const [preflightOpen, setPreflightOpen] = useState(false)
   const toastIdRef = useRef(0)
 
+  // Sprint 4: cash movements sheet, blind-count → variance hand-off, and the pending Z-close decision
+  // (who authorised it, which reason codes) carried from the variance screen to the Reports hold.
+  const [movementsOpen, setMovementsOpen] = useState(false)
+  const [varianceInfo, setVarianceInfo] = useState<VarianceInfo | null>(null)
+  const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
+  const [zSealed, setZSealed] = useState<shift.ZReport | null>(null)
+
   const showToast = useCallback((message: string) => {
     toastIdRef.current += 1
     setToast({ id: toastIdRef.current, message })
@@ -65,6 +69,13 @@ export function App(): JSX.Element {
     onCommitError: () =>
       // SPEC: a full-storage write failure is a toast, never a blocking dialog — the sale stays in
       // memory (useOrder keeps the optimistic state regardless of what happened to the write).
+      showToast("Couldn't save that change — it's kept on screen, but check storage space."),
+  })
+
+  const identity = currentIdentity()
+  const shiftHook = useShift({
+    deviceId: identity?.deviceId ?? '',
+    onCommitError: () =>
       showToast("Couldn't save that change — it's kept on screen, but check storage space."),
   })
 
@@ -195,12 +206,65 @@ export function App(): JSX.Element {
     setScreen('order')
   }, [order])
 
-  const identity = currentIdentity()
+  // --- Sprint 4: shift & cash screens ------------------------------------------------------------
+
+  const handleShiftTap = useCallback(() => {
+    setScreen(shiftHook.isOpen ? 'reports' : 'shift-open')
+  }, [shiftHook.isOpen])
+
+  const handleOpenMovements = useCallback(() => {
+    if (!shiftHook.isOpen) {
+      showToast('Open a shift first.')
+      return
+    }
+    setMovementsOpen(true)
+  }, [shiftHook.isOpen, showToast])
+
+  const handleOpenShift = useCallback(
+    async (input: { openedByStaffId: string; denominations: readonly shift.DenominationCount[]; countedMinor: bigint }) => {
+      await shiftHook.openShift(input)
+      setZSealed(null)
+      setPendingClose(null)
+      setVarianceInfo(null)
+      setScreen('order')
+    },
+    [shiftHook],
+  )
+
+  const handleMovementCommit = useCallback(
+    async (kind: Parameters<typeof shiftHook.payMovement>[0], input: Parameters<typeof shiftHook.payMovement>[1]) => {
+      await shiftHook.payMovement(kind, input)
+      setMovementsOpen(false)
+    },
+    [shiftHook],
+  )
+
+  const handleBlindCountCommit = useCallback(
+    async (input: { denominations: readonly shift.DenominationCount[]; countedMinor: bigint }) => {
+      await shiftHook.recordCount(input)
+      const v = await shiftHook.variance()
+      setVarianceInfo(v)
+      setScreen('variance')
+    },
+    [shiftHook],
+  )
+
+  const handleReadyToClose = useCallback((pending: PendingClose) => {
+    setPendingClose(pending)
+    setScreen('reports')
+  }, [])
+
+  const handleRunZ = useCallback(
+    async (pending: PendingClose) => {
+      const z = await shiftHook.closeShift(pending)
+      setZSealed(z)
+      setPendingClose(null)
+      shiftHook.reset() // this device can open a fresh shift immediately; the Z receipt lives in `zSealed`
+    },
+    [shiftHook],
+  )
 
   // Dev-only on-device storage preflight (import.meta.env.DEV → tree-shaken from production builds).
-  // A floating toggle + a plain-text panel of the browser preconditions the Sprint 1 durability story
-  // needs, so they can be read on a physical iPad that has no devtools. Available on both the setup
-  // and till screens — secure context / SW / OPFS are worth checking before configuring the till.
   const devOverlay = import.meta.env.DEV ? (
     <>
       {!preflightOpen && (
@@ -226,8 +290,12 @@ export function App(): JSX.Element {
     staffName: STAFF_NAME_STUB,
     syncState,
     onOpenDiagnostics: openDiagnostics,
-    onShiftTap: () => showToast('Shifts arrive in Sprint 4'),
+    onShiftTap: handleShiftTap,
+    shiftOpen: shiftHook.isOpen,
+    onOpenMovements: handleOpenMovements,
   }
+
+  const counterName = STAFF_FIXTURE.find((s) => s.id === shiftHook.state?.currentStaffId)?.name ?? 'Staff'
 
   return (
     <>
@@ -238,6 +306,49 @@ export function App(): JSX.Element {
       )}
 
       {screen === 'receipt' && closedSnapshot && <Receipt snapshot={closedSnapshot} headerProps={headerProps} onNewSale={handleNewSale} />}
+
+      {screen === 'shift-open' && (
+        <ShiftOpen staff={STAFF_FIXTURE} syncState={syncState} onBack={() => setScreen('order')} onOpen={handleOpenShift} />
+      )}
+
+      {screen === 'blind-count' && (
+        <BlindCount
+          counterName={counterName}
+          syncState={syncState}
+          onCancel={() => setScreen('order')}
+          onCommit={handleBlindCountCommit}
+        />
+      )}
+
+      {screen === 'variance' && varianceInfo && (
+        <VarianceResult
+          variance={varianceInfo}
+          staff={STAFF_FIXTURE}
+          onRecount={() => setScreen('blind-count')}
+          onReadyToClose={handleReadyToClose}
+        />
+      )}
+
+      {screen === 'reports' && (
+        <Reports
+          syncState={syncState}
+          hasCommittedCount={shiftHook.hasCommittedCount}
+          pendingClose={pendingClose}
+          zSealed={zSealed}
+          onBack={() => setScreen('order')}
+          onRunX={shiftHook.xReport}
+          onCountTheDrawer={() => setScreen('blind-count')}
+          onRunZ={handleRunZ}
+        />
+      )}
+
+      {movementsOpen && (
+        <div className="movements-scrim" onClick={() => setMovementsOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <CashMovements staff={STAFF_FIXTURE} onCancel={() => setMovementsOpen(false)} onCommit={handleMovementCommit} />
+          </div>
+        </div>
+      )}
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
 

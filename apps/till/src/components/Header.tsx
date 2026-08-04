@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { CheckIcon, DashedRingIcon, RefreshIcon } from '../icons'
+import { CheckIcon, DashedRingIcon, DrawerIcon, RefreshIcon } from '../icons'
 import { useLongPressOnly } from '../gestures'
 import './Header.css'
 
@@ -21,7 +21,11 @@ export interface HeaderProps {
   readonly staffName: string
   readonly syncState: SyncPillState
   readonly onOpenDiagnostics: () => void
+  /** Tap the shift pill: opens Screen 1 (no shift yet) or Screen 5 reports (shift open) — Sprint 4. */
   readonly onShiftTap: () => void
+  readonly shiftOpen: boolean
+  /** The drawer glyph (SPEC Screen 2): opens Cash movements as a sheet, order untouched underneath. */
+  readonly onOpenMovements: () => void
 }
 
 const SYNC_COPY: Record<SyncPillState, string> = {
@@ -74,7 +78,7 @@ function SyncPill({ state }: { readonly state: SyncPillState }): JSX.Element {
   )
 }
 
-export function Header({ staffName, syncState, onOpenDiagnostics, onShiftTap }: HeaderProps): JSX.Element {
+export function Header({ staffName, syncState, onOpenDiagnostics, onShiftTap, shiftOpen, onOpenMovements }: HeaderProps): JSX.Element {
   const clock = useClock()
   const wordmarkGesture = useLongPressOnly(onOpenDiagnostics)
 
@@ -85,10 +89,18 @@ export function Header({ staffName, syncState, onOpenDiagnostics, onShiftTap }: 
           Batch
         </button>
         <span className="staff-name">{staffName}</span>
-        {/* Shift open/close is Sprint 4 (real shift lifecycle). Stub pill matches the SPEC visual. */}
-        <button type="button" className="shift-pill" onClick={onShiftTap}>
+        <button type="button" className="shift-pill" data-open={shiftOpen} onClick={onShiftTap}>
           <CheckIcon size={14} />
-          <span>Shift open</span>
+          <span>{shiftOpen ? 'Shift open' : 'Open shift'}</span>
+        </button>
+        <button
+          type="button"
+          className="movements-btn"
+          onClick={onOpenMovements}
+          aria-label="Cash movements"
+          disabled={!shiftOpen}
+        >
+          <DrawerIcon size={18} />
         </button>
       </div>
       <div className="till-header-right">

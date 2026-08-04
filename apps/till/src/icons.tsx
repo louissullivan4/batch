@@ -84,6 +84,34 @@ export function RadioGlyph({ selected, size = 20, className }: IconProps & { rea
   )
 }
 
+/** Cash-drawer glyph for the header's "Cash movements" entry point (SPEC Screen 2 "drawer glyph"). */
+export function DrawerIcon({ size = 16, className }: IconProps): JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <rect x="3" y="7" width="18" height="13" rx="1.5" stroke="currentColor" strokeWidth="2" />
+      <path d="M3 7l3-4h12l3 4" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M10 13.5h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/** Variance direction glyphs — word + triangle, never colour alone (SPEC Screen 4). */
+export function TriangleUpIcon({ size = 16, className }: IconProps): JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <path d="M12 4l9 16H3l9-16z" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function TriangleDownIcon({ size = 16, className }: IconProps): JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <path d="M12 20L3 4h18l-9 16z" fill="currentColor" />
+    </svg>
+  )
+}
+
 /**
  * Multi-select option glyph: empty square, square-with-check when selected (SPEC "square
  * checkbox"). The check itself renders in `--color-raised` — against the accent-filled square that

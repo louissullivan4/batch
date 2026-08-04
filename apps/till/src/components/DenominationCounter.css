@@ -1,0 +1,83 @@
+.denomination-counter {
+  display: flex;
+  gap: var(--space-xxl);
+}
+
+.denom-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.denom-column-label {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  color: var(--color-text-muted);
+}
+
+.denom-row {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.denom-label {
+  width: 44px;
+  font-size: var(--type-item-size);
+  font-weight: var(--type-item-weight);
+  color: var(--color-text);
+}
+
+.denom-step {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.denom-step:active {
+  background: var(--tint-accent);
+  box-shadow: var(--shadow-pressed);
+}
+
+.denom-step:disabled {
+  opacity: 0.45;
+}
+
+.denom-count,
+.denom-count-input {
+  min-width: 72px;
+  min-height: 48px;
+  text-align: center;
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.denom-count:active {
+  border-color: var(--color-border);
+}
+
+.denom-count-input {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.denom-subtotal {
+  flex: 1;
+  text-align: right;
+  font-size: var(--type-body-size);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
