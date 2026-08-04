@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin:0; background:#EFEAE2; color:#1C1917; font-family:'Spline Sans',sans-serif; }
+    a { color:#943109; } a:hover { color:#732708; }
+  </style>
+</helmet>
+<div style="display:flex; flex-wrap:wrap; gap:72px; padding:64px; width:2604px; align-items:flex-start">
+
+  <!-- ============ SCREEN 1 · SHIFT OPEN ============ -->
+  <div style="display:flex; flex-direction:column; gap:16px; width:1194px; flex:none">
+    <div style="font-size:13px; font-weight:600; letter-spacing:0.06em; color:#524E48">SCREEN 1 · SHIFT OPEN — 1194×834</div>
+    <div style="width:1194px; height:834px; background:#FAF7F2; border:1px solid #DED6C8; border-radius:4px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 2px 8px rgba(28,25,23,0.08)">
+      <div style="height:64px; flex:none; display:flex; align-items:center; gap:16px; padding:0 24px; border-bottom:1px solid #DED6C8">
+        <span style="font-size:20px; font-weight:700">Batch</span>
+        <span style="width:1px; height:24px; background:#DED6C8"></span>
+        <span style="font-size:17px">Open shift · Monday 4 Aug</span>
+        <span style="flex:1"></span>
+        <span style="height:36px; display:inline-flex; align-items:center; gap:8px; padding:0 14px; border:1.5px solid #125E36; color:#125E36; border-radius:999px; font-size:15px; font-weight:600; background:#FFFFFF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Synced</span>
+        <span style="font-size:13px; font-weight:500; color:#524E48; font-feature-settings:'tnum'">07:02</span>
+      </div>
+      <div style="flex:1; display:flex; min-height:0">
+        <div style="flex:1; padding:24px; display:flex; flex-direction:column; gap:20px; min-width:0">
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <span style="font-size:15px; font-weight:600">Who's opening?</span>
+            <div style="display:flex; gap:12px; flex-wrap:wrap">
+              <sc-for list="{{ staff }}" as="s" hint-placeholder-count="4">
+                <span style="height:56px; display:inline-flex; align-items:center; gap:10px; padding:0 22px; border:1.5px solid #DED6C8; background:#FFFFFF; border-radius:999px; font-size:17px; font-weight:600" ref="{{ s.ref }}"><span style="width:18px; height:18px; border-radius:999px; border:2px solid #524E48; display:grid; place-items:center; flex:none" ref="{{ s.dotRef }}"></span>{{ s.name }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px; flex:1">
+            <span style="font-size:15px; font-weight:600">Float in the drawer</span>
+            <div style="display:flex; gap:32px">
+              <div style="flex:1; display:flex; flex-direction:column; gap:8px">
+                <sc-for list="{{ floatNotes }}" as="r" hint-placeholder-count="4">
+                  <div style="height:56px; display:flex; align-items:center; gap:12px">
+                    <span style="width:56px; font-size:20px; font-weight:600; font-feature-settings:'tnum'">{{ r.label }}</span>
+                    <span style="width:56px; height:56px; display:grid; place-items:center; border:1.5px solid #DED6C8; border-radius:10px; background:#FFFFFF; font-size:28px; font-weight:600" ref="{{ r.minusRef }}">−</span>
+                    <span style="width:64px; text-align:center; font-size:28px; font-weight:600; font-feature-settings:'tnum'">{{ r.count }}</span>
+                    <span style="width:56px; height:56px; display:grid; place-items:center; border:1.5px solid #DED6C8; border-radius:10px; background:#FFFFFF; font-size:28px; font-weight:600">+</span>
+                    <span style="flex:1; text-align:right; font-size:17px; font-weight:600; color:#524E48; font-feature-settings:'tnum'">{{ r.sub }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:8px">
+                <sc-for list="{{ floatCoins }}" as="r" hint-placeholder-count="6">
+                  <div style="height:56px; display:flex; align-items:center; gap:12px">
+                    <span style="width:56px; font-size:20px; font-weight:600; font-feature-settings:'tnum'">{{ r.label }}</span>
+                    <span style="width:56px; height:56px; display:grid; place-items:center; border:1.5px solid #DED6C8; border-radius:10px; background:#FFFFFF; font-size:28px; font-weight:600" ref="{{ r.minusRef }}">−</span>
+                    <span style="width:64px; text-align:center; font-size:28px; font-weight:600; font-feature-settings:'tnum'">{{ r.count }}</span>
+                    <span style="width:56px; height:56px; display:grid; place-items:center; border:1.5px solid #DED6C8; border-radius:10px; background:#FFFFFF; font-size:28px; font-weight:600">+</span>
+                    <span style="flex:1; text-align:right; font-size:17px; font-weight:600; color:#524E48; font-feature-settings:'tnum'">{{ r.sub }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <span style="font-size:13px; font-weight:500; color:#524E48">1c and 2c omitted — Irish cash rounds to 5c. Tap a count to type it directly.</span>
+          </div>
+        </div>
+        <div style="width:384px; flex:none; background:#FFFFFF; border-left:1px solid #DED6C8; display:flex; flex-direction:column; padding:24px; gap:12px">
+          <span style="font-size:15px; font-weight:600; color:#524E48">Float</span>
+          <span style="font-size:40px; font-weight:700; line-height:44px; font-feature-settings:'tnum'">€150.00</span>
+          <div style="display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:500; color:#524E48; font-feature-settings:'tnum'">
+            <span>3 × €20 · 5 × €10 · 4 × €5</span>
+            <span>5 × €2 · 5 × €1 · 6 × 50c</span>
+            <span>5 × 20c · 5 × 10c · 10 × 5c</span>
+          </div>
+          <span style="flex:1"></span>
+          <span style="font-size:13px; font-weight:500; color:#524E48">Declared by Aoife · 07:02. Corrections later go through a cash movement, not an edit.</span>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; background:#943109; color:#FFFFFF; border-radius:10px; font-size:20px; font-weight:600; font-feature-settings:'tnum'">Open shift — €150.00</div>
+        </div>
+      </div>
+    </div>
+    <ul style="margin:0; padding-left:20px; max-width:1100px; font-size:15px; line-height:23px; color:#524E48; display:flex; flex-direction:column; gap:4px">
+      <li>Denomination counter (shared with blind count): 56pt steppers, long-press repeats, − disabled at zero. Running total + breakdown are the confirmation — commit adds one inline confirm strip, no modal.</li>
+      <li>Staff selection by radio chip; the declaration is irreversible once committed (append-only events) — wrong floats are corrected by a "Float correction" movement.</li>
+    </ul>
+  </div>
+
+  <!-- ============ SCREEN 2 · CASH MOVEMENTS ============ -->
+  <div style="display:flex; flex-direction:column; gap:16px; width:1194px; flex:none">
+    <div style="font-size:13px; font-weight:600; letter-spacing:0.06em; color:#524E48">SCREEN 2 · CASH MOVEMENTS — sheet over the till</div>
+    <div style="width:1194px; height:834px; background:#FAF7F2; border:1px solid #DED6C8; border-radius:4px; overflow:hidden; position:relative; box-shadow:0 2px 8px rgba(28,25,23,0.08)">
+      <div style="position:absolute; inset:0; display:flex; flex-direction:column">
+        <div style="height:64px; flex:none; border-bottom:1px solid #DED6C8"></div>
+        <div style="flex:1; display:flex">
+          <div style="flex:1; padding:16px; display:flex; flex-direction:column; gap:12px">
+            <div style="height:48px; display:flex; gap:8px"><sc-for list="{{ ghost5 }}" as="g" hint-placeholder-count="5"><div style="flex:1; border:1.5px solid #DED6C8; border-radius:10px; background:#FFFFFF"></div></sc-for></div>
+            <div style="flex:1; display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(5,1fr); gap:12px"><sc-for list="{{ ghost20 }}" as="g" hint-placeholder-count="20"><div style="border:1.5px solid #DED6C8; border-radius:14px; background:#FFFFFF"></div></sc-for></div>
+          </div>
+          <div style="width:384px; background:#FFFFFF; border-left:1px solid #DED6C8"></div>
+        </div>
+      </div>
+      <div style="position:absolute; inset:0; background:rgba(28,25,23,0.4)"></div>
+      <div style="position:absolute; top:47px; bottom:47px; left:127px; width:940px; background:#FFFFFF; border-radius:14px; box-shadow:0 8px 32px rgba(28,25,23,0.3); display:flex; overflow:hidden">
+        <div style="flex:1; padding:28px 32px; display:flex; flex-direction:column; gap:18px; border-right:1px solid #DED6C8">
+          <span style="font-size:28px; font-weight:600">Cash movement</span>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+            <sc-for list="{{ movTypes }}" as="m" hint-placeholder-count="4">
+              <div style="min-height:96px; border:1.5px solid #DED6C8; background:#FFFFFF; border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; gap:4px" ref="{{ m.ref }}">
+                <span style="display:flex; align-items:center; gap:10px; font-size:20px; font-weight:600"><span style="width:18px; height:18px; border-radius:999px; border:2px solid #524E48; display:grid; place-items:center; flex:none" ref="{{ m.dotRef }}"></span>{{ m.name }}</span>
+                <span style="font-size:13px; font-weight:500; line-height:18px; color:#524E48">{{ m.sub }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <span style="font-size:15px; font-weight:600">Reason <span style="font-weight:500; color:#524E48">— required</span></span>
+            <div style="display:flex; gap:10px; flex-wrap:wrap">
+              <sc-for list="{{ movReasons }}" as="r" hint-placeholder-count="5">
+                <span style="height:48px; display:inline-flex; align-items:center; gap:8px; padding:0 18px; border:1.5px solid #DED6C8; background:#FFFFFF; border-radius:999px; font-size:15px; font-weight:600" ref="{{ r.ref }}">{{ r.name }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <span style="flex:1"></span>
+          <span style="font-size:13px; font-weight:500; color:#524E48">Movements are irreversible — mistakes are fixed with a reversing entry, one tap from the shift log.</span>
+        </div>
+        <div style="width:360px; flex:none; padding:28px 32px; display:flex; flex-direction:column; gap:14px">
+          <div style="height:72px; background:#FFFFFF; border:2px solid #1C1917; border-radius:14px; display:flex; align-items:center; justify-content:flex-end; padding:0 20px"><span style="font-size:40px; font-weight:700; font-feature-settings:'tnum'">€12.50</span></div>
+          <div style="flex:1; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(4,1fr); gap:10px; min-height:0">
+            <sc-for list="{{ keys }}" as="k" hint-placeholder-count="12">
+              <div style="background:#FFFFFF; border:1.5px solid #DED6C8; border-radius:10px; display:grid; place-items:center; font-size:28px; font-weight:600; font-feature-settings:'tnum'">{{ k }}</div>
+            </sc-for>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:8px">
+            <span style="font-size:13px; font-weight:500; color:#524E48">Aoife — enter PIN to authorise</span>
+            <div style="display:flex; gap:14px">
+              <span style="width:16px; height:16px; border-radius:999px; background:#1C1917"></span>
+              <span style="width:16px; height:16px; border-radius:999px; background:#1C1917"></span>
+              <span style="width:16px; height:16px; border-radius:999px; background:#1C1917"></span>
+              <span style="width:16px; height:16px; border-radius:999px; border:2px solid #524E48"></span>
+            </div>
+          </div>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; background:#943109; color:#FFFFFF; border-radius:10px; font-size:20px; font-weight:600; font-feature-settings:'tnum'; opacity:0.45">Pay out €12.50</div>
+        </div>
+      </div>
+    </div>
+    <ul style="margin:0; padding-left:20px; max-width:1100px; font-size:15px; line-height:23px; color:#524E48; display:flex; flex-direction:column; gap:4px">
+      <li>Sheet over the till (same grammar as modifiers) — a mid-rush paid-out costs seconds, the order in progress is untouched. Each type tile says what it does; nothing to memorise at 6pm.</li>
+      <li>Authoriser = whoever's PIN validates, entered on the same pad — no name picker to falsify. Commit stays at 45% until the fourth digit lands. Wrong PIN: dots shake and clear, ink caption, no red.</li>
+    </ul>
+  </div>
+
+  <!-- ============ SCREEN 3 · BLIND COUNT ============ -->
+  <div style="display:flex; flex-direction:column; gap:16px; width:1194px; flex:none">
+    <div style="font-size:13px; font-weight:600; letter-spacing:0.06em; color:#524E48">SCREEN 3 · BLIND COUNT — full-screen takeover</div>
+    <div style="width:1194px; height:834px; background:#FAF7F2; border:1px solid #DED6C8; border-radius:4px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 2px 8px rgba(28,25,23,0.08)">
+      <div style="height:64px; flex:none; display:flex; align-items:center; gap:16px; padding:0 24px; border-bottom:1px solid #DED6C8">
+        <span style="height:48px; display:inline-flex; align-items:center; gap:8px; padding:0 20px; background:#FFFFFF; border:1.5px solid #1C1917; border-radius:10px; font-size:15px; font-weight:600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>Cancel count</span>
+        <span style="font-size:28px; font-weight:600">Count the drawer</span>
+        <span style="flex:1"></span>
+        <span style="font-size:17px">Aoife</span>
+        <span style="height:36px; display:inline-flex; align-items:center; gap:8px; padding:0 14px; border:1.5px dashed #57534E; color:#57534E; border-radius:999px; font-size:15px; font-weight:600; background:#FFFFFF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="3 3"><circle cx="12" cy="12" r="9"></circle></svg>Offline</span>
+      </div>
+      <div style="flex:1; display:flex; min-height:0">
+        <div style="flex:1; padding:24px; display:flex; flex-direction:column; gap:12px; min-width:0">
+          <span style="font-size:15px; font-weight:500; color:#524E48">Blind count — the expected amount is shown after you commit.</span>
+          <div style="display:flex; gap:32px; flex:1">
+            <div style="flex:1; display:flex; flex-direction:column; gap:8px">
+              <sc-for list="{{ countNotes }}" as="r" hint-placeholder-count="4">
+                <div style="height:56px; display:flex; align-items:center; gap:12px">
+                  <span style="width:56px; font-size:20px; font-weight:600; font-feature-settings:'tnum'">{{ r.label }}</span>
+                  <span style="width:56px; height:56px; display:grid; place-items:center; border:1.5px solid #DED6C8; border-radius:10px; background:#FFFFFF; font-size:28px; font-weight:600" ref="{{ r.minusRef }}">−</span>
+                  <span style="width:64px; text-align:center; font-size:28px; font-weight:600; font-feature-settings:'tnum'">{{ r.count }}</span>
+                  <span style="width:56px; height:56px; display:grid; place-items:center; border:1.5px solid #DED6C8; border-radius:10px; background:#FFFFFF; font-size:28px; font-weight:600">+</span>
+                  <span style="flex:1; text-align:right; font-size:17px; font-weight:600; color:#524E48; font-feature-settings:'tnum'">{{ r.sub }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:8px">
+              <sc-for list="{{ countCoins }}" as="r" hint-placeholder-count="6">
+                <div style="height:56px; display:flex; align-items:center; gap:12px">
+                  <span style="width:56px; font-size:20px; font-weight:600; font-feature-settings:'tnum'">{{ r.label }}</span>
+                  <span style="width:56px; height:56px; display:grid; place-items:center; border:1.5px solid #DED6C8; border-radius:10px; background:#FFFFFF; font-size:28px; font-weight:600" ref="{{ r.minusRef }}">−</span>
+                  <span style="width:64px; text-align:center; font-size:28px; font-weight:600; font-feature-settings:'tnum'">{{ r.count }}</span>
+                  <span style="width:56px; height:56px; display:grid; place-items:center; border:1.5px solid #DED6C8; border-radius:10px; background:#FFFFFF; font-size:28px; font-weight:600">+</span>
+                  <span style="flex:1; text-align:right; font-size:17px; font-weight:600; color:#524E48; font-feature-settings:'tnum'">{{ r.sub }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="width:384px; flex:none; background:#FFFFFF; border-left:1px solid #DED6C8; display:flex; flex-direction:column; padding:24px; gap:12px">
+          <span style="font-size:15px; font-weight:600; color:#524E48">You've counted</span>
+          <span style="font-size:40px; font-weight:700; line-height:44px; font-feature-settings:'tnum'">€412.35</span>
+          <span style="font-size:13px; font-weight:500; line-height:18px; color:#524E48">Check this against your own tally before committing.</span>
+          <span style="flex:1"></span>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; background:#943109; color:#FFFFFF; border-radius:10px; font-size:20px; font-weight:600; font-feature-settings:'tnum'">Commit count — €412.35</div>
+          <span style="height:48px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; color:#524E48; text-decoration:underline">Enter one total instead</span>
+        </div>
+      </div>
+    </div>
+    <ul style="margin:0; padding-left:20px; max-width:1100px; font-size:15px; line-height:23px; color:#524E48; display:flex; flex-direction:column; gap:4px">
+      <li><strong style="color:#1C1917">Structurally blind:</strong> the expected figure is not computed on the client until the count commits — there is nothing on this screen (or in its memory) to reveal. X reports are locked while a count is open.</li>
+      <li>Only navigation is Cancel (records nothing) and Commit (atomic → variance screen; no editable back-path — a recount is a new logged count).</li>
+      <li>Running total exists for the counter's own tally only — it is the sole figure on screen. Commit takes one tap: recounts are cheap, friction here would punish honesty.</li>
+      <li>Single-total fallback is deliberately quiet (underlined text, 48pt hit) so the denomination breakdown stays the default; using it makes the commit read "Commit total — no breakdown".</li>
+    </ul>
+  </div>
+
+  <!-- ============ SCREEN 4 · VARIANCE RESULT ============ -->
+  <div style="display:flex; flex-direction:column; gap:16px; width:1194px; flex:none">
+    <div style="font-size:13px; font-weight:600; letter-spacing:0.06em; color:#524E48">SCREEN 4 · VARIANCE RESULT — after commit</div>
+    <div style="width:1194px; height:834px; background:#FAF7F2; border:1px solid #DED6C8; border-radius:4px; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(28,25,23,0.08)">
+      <div style="width:720px; background:#FFFFFF; border:1px solid #DED6C8; border-radius:14px; padding:40px 48px; display:flex; flex-direction:column; gap:20px">
+        <div style="display:flex; flex-direction:column; gap:10px; font-feature-settings:'tnum'">
+          <div style="display:flex; justify-content:space-between; align-items:baseline"><span style="font-size:20px; font-weight:600; color:#524E48">Counted</span><span style="font-size:28px; font-weight:600">€412.35</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline"><span style="font-size:20px; font-weight:600; color:#524E48">Expected</span><span style="font-size:28px; font-weight:600">€432.35</span></div>
+        </div>
+        <div style="height:1px; background:#DED6C8"></div>
+        <div style="display:flex; align-items:baseline; gap:14px; font-feature-settings:'tnum'">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1C1917" style="align-self:center"><path d="M12 19l-8-12h16z"></path></svg>
+          <span style="font-size:40px; font-weight:700; line-height:44px">Short €20.00</span>
+        </div>
+        <span style="font-size:15px; font-weight:500; color:#524E48">Recorded against shift #142 · a second count is available if you want one.</span>
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <span style="font-size:15px; font-weight:600">Any idea why? <span style="font-weight:500; color:#524E48">— optional</span></span>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <sc-for list="{{ varReasons }}" as="r" hint-placeholder-count="4">
+              <span style="height:48px; display:inline-flex; align-items:center; gap:10px; padding:0 18px; border:1.5px solid #DED6C8; background:#FFFFFF; border-radius:999px; font-size:15px; font-weight:600"><span style="width:16px; height:16px; border-radius:4px; border:2px solid #524E48; flex:none"></span>{{ r }}</span>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px">
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; background:#943109; color:#FFFFFF; border-radius:10px; font-size:20px; font-weight:600">Manager PIN — close shift</div>
+          <div style="height:48px; display:flex; align-items:center; justify-content:center; background:#FFFFFF; border:1.5px solid #1C1917; border-radius:10px; font-size:17px; font-weight:600">No manager here — close and flag</div>
+          <span style="font-size:13px; font-weight:500; line-height:18px; color:#524E48; text-align:center">Variances over €10 ask for a manager. Closing without one still closes normally — the variance is marked unauthorised and appears in the back-office review.</span>
+        </div>
+      </div>
+    </div>
+    <ul style="margin:0; padding-left:20px; max-width:1100px; font-size:15px; line-height:23px; color:#524E48; display:flex; flex-direction:column; gap:4px">
+      <li>Factual, symmetric tone: over and short are set identically in ink — never red, never amber. Direction = word + triangle glyph. An exact count gets the one added colour: a success check.</li>
+      <li>Reason codes offered, not demanded — "Not sure yet" is a first-class answer; skipping is allowed. An accusatory screen teaches staff to hide discrepancies.</li>
+      <li>The close is never blocked: the no-manager path reads as logistics, closes normally, and records an unauthorised variance for review.</li>
+    </ul>
+  </div>
+
+  <!-- ============ SCREEN 5 · X / Z REPORTS ============ -->
+  <div style="display:flex; flex-direction:column; gap:16px; width:1194px; flex:none">
+    <div style="font-size:13px; font-weight:600; letter-spacing:0.06em; color:#524E48">SCREEN 5 · X AND Z REPORTS — 1194×834</div>
+    <div style="width:1194px; height:834px; background:#FAF7F2; border:1px solid #DED6C8; border-radius:4px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 2px 8px rgba(28,25,23,0.08)">
+      <div style="height:64px; flex:none; display:flex; align-items:center; gap:16px; padding:0 24px; border-bottom:1px solid #DED6C8">
+        <span style="height:48px; display:inline-flex; align-items:center; gap:8px; padding:0 20px; background:#FFFFFF; border:1.5px solid #1C1917; border-radius:10px; font-size:15px; font-weight:600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>Back</span>
+        <span style="font-size:28px; font-weight:600">Reports · Shift #142</span>
+        <span style="flex:1"></span>
+        <span style="font-size:17px">Aoife</span>
+        <span style="height:36px; display:inline-flex; align-items:center; gap:8px; padding:0 14px; border:1.5px dashed #57534E; color:#57534E; border-radius:999px; font-size:15px; font-weight:600; background:#FFFFFF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="3 3"><circle cx="12" cy="12" r="9"></circle></svg>Offline</span>
+      </div>
+      <div style="flex:1; display:flex; gap:24px; padding:24px; min-height:0">
+        <div style="flex:1; background:#FFFFFF; border:1px solid #DED6C8; border-radius:14px; padding:36px; display:flex; flex-direction:column; gap:16px">
+          <div style="display:flex; align-items:center; gap:14px">
+            <span style="font-size:28px; font-weight:600">X report</span>
+            <span style="height:32px; display:inline-flex; align-items:center; padding:0 12px; border:1.5px solid #57534E; color:#57534E; border-radius:999px; font-size:13px; font-weight:600">Snapshot</span>
+          </div>
+          <span style="font-size:17px; line-height:24px; color:#524E48; max-width:44ch">Totals so far, printed. Changes nothing, closes nothing. Run it as often as you like during the shift.</span>
+          <span style="font-size:15px; font-weight:600; color:#524E48; font-feature-settings:'tnum'">Last X · 14:02 · #3 this shift</span>
+          <span style="flex:1"></span>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; background:#FFFFFF; border:1.5px solid #1C1917; border-radius:10px; font-size:20px; font-weight:600">Print X report</div>
+        </div>
+        <div style="flex:1; background:#1C1917; color:#FAF7F2; border-radius:14px; padding:36px; display:flex; flex-direction:column; gap:16px">
+          <div style="display:flex; align-items:center; gap:14px">
+            <span style="font-size:28px; font-weight:600">Z report</span>
+            <span style="height:32px; display:inline-flex; align-items:center; padding:0 12px; border:1.5px solid #FAF7F2; border-radius:999px; font-size:13px; font-weight:600">Closes the shift</span>
+          </div>
+          <span style="font-size:17px; line-height:24px; color:#FAF7F2; opacity:0.75; max-width:44ch">Runs once, after the drawer count. Locks shift #142 and issues the next sequential Z. This cannot be undone.</span>
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:15px; font-weight:600">
+            <span style="display:flex; align-items:center; gap:10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FAF7F2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Blind count committed — €412.35</span>
+            <span style="display:flex; align-items:center; gap:10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FAF7F2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Variance recorded — short €20.00</span>
+          </div>
+          <span style="flex:1"></span>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; gap:12px; background:#943109; color:#FFFFFF; border-radius:10px; font-size:20px; font-weight:600; font-feature-settings:'tnum'"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-dasharray="14 42"></circle></svg>Hold to run Z #142</div>
+          <span style="font-size:13px; font-weight:500; color:#FAF7F2; opacity:0.75; text-align:center">Hold 1.5 seconds — releasing early cancels.</span>
+        </div>
+      </div>
+    </div>
+    <ul style="margin:0; padding-left:20px; max-width:1100px; font-size:15px; line-height:23px; color:#524E48; display:flex; flex-direction:column; gap:4px">
+      <li>Z is the only ink-dark surface in the product — if the panel is dark, you're about to close the shift. Five differences separate X from Z: surface, verb, interaction, precondition, copy.</li>
+      <li>X: one tap, outlined, repeatable, counter shown. Z: press-and-hold 1.5s with a filling ring — the hold is the confirmation; no modal follows. Nothing else in Batch uses hold-to-confirm.</li>
+      <li>Z stays disabled until count + variance are committed; after running, the panel becomes a receipt ("Z #142 issued 18:04") with nothing left to press.</li>
+      <li>Both work offline; Z numbering is per-device sequence + shift id, so sequence integrity survives sync. Full states in <a href="SPEC.md">SPEC.md</a>.</li>
+    </ul>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const tint = '#F7E8DF';
+    const sel = el => { if (el) Object.assign(el.style, { background: tint, border: '2px solid #943109' }); };
+    const dotSel = el => { if (el) { Object.assign(el.style, { borderColor: '#943109' }); el.innerHTML = '<span style="width:8px;height:8px;border-radius:999px;background:#943109"></span>'; } };
+    const dim = el => { if (el) el.style.opacity = '0.45'; };
+    const none = () => {};
+    const staff = ['Aoife', 'Conor', 'Saoirse', 'Dara'].map((name, i) => ({ name, ref: i === 0 ? sel : none, dotRef: i === 0 ? dotSel : none }));
+    const row = ([label, count, sub]) => ({ label, count, sub, minusRef: count === 0 ? dim : none });
+    const floatNotes = [['€50', 0, '€0.00'], ['€20', 3, '€60.00'], ['€10', 5, '€50.00'], ['€5', 4, '€20.00']].map(row);
+    const floatCoins = [['€2', 5, '€10.00'], ['€1', 5, '€5.00'], ['50c', 6, '€3.00'], ['20c', 5, '€1.00'], ['10c', 5, '€0.50'], ['5c', 10, '€0.50']].map(row);
+    const countNotes = [['€50', 3, '€150.00'], ['€20', 8, '€160.00'], ['€10', 6, '€60.00'], ['€5', 5, '€25.00']].map(row);
+    const countCoins = [['€2', 6, '€12.00'], ['€1', 3, '€3.00'], ['50c', 3, '€1.50'], ['20c', 3, '€0.60'], ['10c', 2, '€0.20'], ['5c', 1, '€0.05']].map(row);
+    const movTypes = [
+      { name: 'Paid in', sub: 'Cash added to the drawer — change from the safe, float correction.' },
+      { name: 'Paid out', sub: 'Cash taken to pay for something — milk run, courier.', on: true },
+      { name: 'Skim', sub: 'Excess cash out mid-shift, counted at close.' },
+      { name: 'Safe drop', sub: 'Cash out to the safe, counted later against the drop bag.' },
+    ].map(m => ({ ...m, ref: m.on ? sel : none, dotRef: m.on ? dotSel : none }));
+    const movReasons = ['Milk run', 'Cleaning', 'Window cleaner', 'Courier', 'Other…'].map((name, i) => ({ name, ref: i === 0 ? sel : none }));
+    return {
+      staff, floatNotes, floatCoins, countNotes, countCoins, movTypes, movReasons,
+      varReasons: ['Change given wrong', 'Paid-out not recorded', 'Note counted twice', 'Not sure yet'],
+      keys: ['1','2','3','4','5','6','7','8','9','.','0','⌫'],
+      ghost5: [1,2,3,4,5], ghost20: Array.from({ length: 20 }, (_, i) => i),
+    };
+  }
+}
+</script>
+</body>
+</html>
