@@ -58,12 +58,16 @@ export interface UseShift {
   variance(): Promise<VarianceInfo | null>
   /** The mid-shift X report: a pure fold, appends no event (ADR 0010 exit criterion #5). */
   xReport(): Promise<shift.XReport | null>
-  /** The terminal Z-read. Resolves the sealed `ZReport`; throws if no count has been committed. */
+  /**
+   * The terminal Z-read. Resolves the **sealed `ShiftState`** (from which the caller derives the Z
+   * report and the printable receipt before `reset`); throws if no count has been committed or the
+   * write failed.
+   */
   closeShift(input: {
     closedByStaffId: string
     reasonCodes: readonly string[]
     authorised: boolean
-  }): Promise<shift.ZReport>
+  }): Promise<shift.ShiftState>
   /** Start fresh after Z (or to discard an in-memory shift that failed to open). */
   reset(): void
 }
@@ -173,7 +177,7 @@ export function useShift(options: UseShiftOptions): UseShift {
   }, [])
 
   const closeShift = useCallback(
-    async (input: { closedByStaffId: string; reasonCodes: readonly string[]; authorised: boolean }): Promise<shift.ZReport> => {
+    async (input: { closedByStaffId: string; reasonCodes: readonly string[]; authorised: boolean }): Promise<shift.ShiftState> => {
       const current = stateRef.current
       if (!current) throw new Error('cannot close: no open shift')
       const v = await variance()
@@ -191,7 +195,7 @@ export function useShift(options: UseShiftOptions): UseShift {
       // lost after the UI shows "closed") is worse than staying open and letting the manager retry the
       // hold. `applyAndCommit` rolls back + rethrows, so on failure the shift stays open.
       await applyAndCommit([outgoing])
-      return shift.zReport(shift.reduceShift(eventsRef.current))
+      return shift.reduceShift(eventsRef.current)
     },
     [variance, applyAndCommit],
   )

@@ -15,6 +15,7 @@ import { CashMovements } from './screens/CashMovements/CashMovements'
 import { BlindCount } from './screens/BlindCount/BlindCount'
 import { VarianceResult, type PendingClose } from './screens/VarianceResult/VarianceResult'
 import { Reports } from './screens/Reports/Reports'
+import { buildZReceipt, type ZReceiptData } from './screens/Reports/z-receipt'
 import { Toast, type ToastState } from './components/Toast'
 import { DiagnosticsDrawer } from './components/DiagnosticsDrawer'
 import { StoragePreflight } from './components/StoragePreflight'
@@ -28,7 +29,7 @@ import type { HeaderProps, SyncPillState } from './components/Header'
  * would slow the sale down; the shift screens are where real PIN auth (ADR 0009) lives this sprint.
  */
 
-const STAFF_NAME_STUB = 'Aoife'
+const STAFF_NAME_STUB = 'Orla'
 
 const DEFAULT_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:3000'
 
@@ -58,7 +59,7 @@ export function App(): JSX.Element {
   const [movementsOpen, setMovementsOpen] = useState(false)
   const [varianceInfo, setVarianceInfo] = useState<VarianceInfo | null>(null)
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
-  const [zSealed, setZSealed] = useState<shift.ZReport | null>(null)
+  const [zReceipt, setZReceipt] = useState<ZReceiptData | null>(null)
 
   const showToast = useCallback((message: string) => {
     toastIdRef.current += 1
@@ -227,7 +228,7 @@ export function App(): JSX.Element {
         showToast("Couldn't open the shift — check storage and try again.")
         return
       }
-      setZSealed(null)
+      setZReceipt(null)
       setPendingClose(null)
       setVarianceInfo(null)
       setScreen('order')
@@ -272,19 +273,25 @@ export function App(): JSX.Element {
 
   const handleRunZ = useCallback(
     async (pending: PendingClose) => {
-      let z: shift.ZReport
+      let closedState: shift.ShiftState
       try {
-        z = await shiftHook.closeShift(pending)
+        closedState = await shiftHook.closeShift(pending)
       } catch {
         // The seal did not persist — the shift stays open. The manager retries the hold.
         showToast("Couldn't issue the Z — the shift is still open. Try the hold again.")
         return
       }
-      setZSealed(z)
+      // Snapshot the printable receipt NOW, from the sealed state, before reset clears the shift.
+      const receipt = buildZReceipt(closedState, {
+        closedAtISO: new Date().toISOString(),
+        shopName: tenantId, // no shop-name field until back-office (Sprint 6); the tenant id stands in
+        resolveStaffName: (id) => findStaff(id)?.name ?? id ?? '—',
+      })
+      setZReceipt(receipt)
       setPendingClose(null)
-      shiftHook.reset() // this device can open a fresh shift immediately; the Z receipt lives in `zSealed`
+      shiftHook.reset() // this device can open a fresh shift immediately; the Z receipt lives in `zReceipt`
     },
-    [shiftHook, showToast],
+    [shiftHook, showToast, tenantId],
   )
 
   // Dev-only on-device storage preflight (import.meta.env.DEV → tree-shaken from production builds).
@@ -357,7 +364,7 @@ export function App(): JSX.Element {
           syncState={syncState}
           hasCommittedCount={shiftHook.hasCommittedCount}
           pendingClose={pendingClose}
-          zSealed={zSealed}
+          zReceipt={zReceipt}
           onBack={() => setScreen('order')}
           onRunX={shiftHook.xReport}
           onCountTheDrawer={() => setScreen('blind-count')}

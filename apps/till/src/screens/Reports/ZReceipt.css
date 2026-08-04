@@ -1,0 +1,171 @@
+/*
+ * Z-receipt print document. Hidden on screen; revealed only for print, where it replaces the whole
+ * app so the printout / saved PDF is just the document. Deliberately black-on-white named colours —
+ * a printed cash record is not themed, so this is the one place the no-hex-tokens rule doesn't apply
+ * (there are no hex literals here regardless).
+ */
+
+.z-receipt-print {
+  display: none;
+}
+
+@media print {
+  /* Replace the app with the document: hide the React root (sibling of this portal on <body>). */
+  #root {
+    display: none !important;
+  }
+  .z-receipt-print {
+    display: block !important;
+  }
+  @page {
+    margin: 16mm;
+  }
+}
+
+.zr {
+  box-sizing: border-box;
+  max-width: 148mm; /* A5-ish column — a till receipt reads narrow */
+  margin: 0 auto;
+  color: black;
+  background: white;
+  font-family: 'Spline Sans', system-ui, sans-serif;
+  font-size: 11pt;
+  line-height: 1.4;
+}
+
+.zr-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 2pt solid black;
+  padding-bottom: 6pt;
+  margin-bottom: 10pt;
+}
+
+.zr-title {
+  font-size: 20pt;
+  font-weight: 700;
+  margin: 0;
+}
+
+.zr-shop {
+  margin: 2pt 0 0;
+  font-size: 11pt;
+}
+
+.zr-znum {
+  font-size: 15pt;
+  font-weight: 700;
+  margin: 0;
+}
+
+.zr-meta {
+  margin: 0 0 12pt;
+}
+
+.zr-meta > div {
+  display: flex;
+  gap: 8pt;
+  padding: 1pt 0;
+}
+
+.zr-meta dt {
+  width: 22mm;
+  color: dimgray;
+  margin: 0;
+}
+
+.zr-meta dd {
+  margin: 0;
+}
+
+.zr-mono {
+  font-variant-numeric: tabular-nums;
+  font-size: 9pt;
+  word-break: break-all;
+}
+
+.zr-section {
+  margin-bottom: 12pt;
+}
+
+.zr-section h2 {
+  font-size: 10pt;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: dimgray;
+  margin: 0 0 4pt;
+  border-bottom: 0.5pt solid gainsboro;
+  padding-bottom: 2pt;
+}
+
+.zr-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2pt 0;
+}
+
+.zr-row--strong {
+  font-weight: 700;
+  border-top: 1pt solid black;
+  margin-top: 3pt;
+  padding-top: 4pt;
+}
+
+.zr-row-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.zr-note {
+  margin: 4pt 0 0;
+  font-size: 9pt;
+  color: dimgray;
+}
+
+.zr-variance {
+  display: flex;
+  align-items: baseline;
+  gap: 8pt;
+  margin-top: 6pt;
+  padding-top: 6pt;
+  border-top: 1pt solid black;
+  font-size: 16pt;
+  font-weight: 700;
+}
+
+.zr-variance-glyph {
+  font-size: 14pt;
+}
+
+/* Direction is encoded by the word + glyph, never colour alone (SPEC Screen 4). Ink for over/short. */
+.zr-variance--over,
+.zr-variance--short {
+  color: black;
+}
+
+.zr-reasons {
+  margin: 6pt 0 0;
+  font-size: 10pt;
+}
+
+.zr-auth {
+  margin: 4pt 0 0;
+  font-size: 10pt;
+  font-style: italic;
+}
+
+.zr-foot {
+  margin-top: 14pt;
+  padding-top: 6pt;
+  border-top: 0.5pt solid gainsboro;
+  font-size: 8.5pt;
+  color: dimgray;
+}
+
+.zr-foot p {
+  margin: 1pt 0;
+}

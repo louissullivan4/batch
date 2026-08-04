@@ -16,6 +16,8 @@ import type { SyncPillState } from '../../components/Header'
 import { ShiftScreenBar } from '../../components/ShiftScreenBar'
 import { CheckIcon } from '../../icons'
 import type { PendingClose } from '../VarianceResult/VarianceResult'
+import { ZReceipt } from './ZReceipt'
+import type { ZReceiptData } from './z-receipt'
 import './Reports.css'
 
 const HOLD_MS = 1500
@@ -24,7 +26,8 @@ export interface ReportsProps {
   readonly syncState: SyncPillState
   readonly hasCommittedCount: boolean
   readonly pendingClose: PendingClose | null
-  readonly zSealed: shift.ZReport | null
+  /** The sealed Z receipt, present once Z has run — drives the receipt state and the printable doc. */
+  readonly zReceipt: ZReceiptData | null
   readonly onBack: () => void
   readonly onRunX: () => Promise<shift.XReport | null>
   readonly onCountTheDrawer: () => void
@@ -39,7 +42,7 @@ export function Reports({
   syncState,
   hasCommittedCount,
   pendingClose,
-  zSealed,
+  zReceipt,
   onBack,
   onRunX,
   onCountTheDrawer,
@@ -63,7 +66,7 @@ export function Reports({
     }
   }, [onRunX])
 
-  const zReady = hasCommittedCount && pendingClose !== null && zSealed === null
+  const zReady = hasCommittedCount && pendingClose !== null && zReceipt === null
 
   const cancelHold = useCallback(() => {
     if (holdRafRef.current !== null) cancelAnimationFrame(holdRafRef.current)
@@ -128,19 +131,24 @@ export function Reports({
           </p>
 
           <div className="report-count-cta">
-            <button type="button" className="report-count-btn" onClick={onCountTheDrawer} disabled={zReady || zSealed !== null}>
+            <button type="button" className="report-count-btn" onClick={onCountTheDrawer} disabled={zReady || zReceipt !== null}>
               Count the drawer →
             </button>
           </div>
         </section>
 
         <section className="report-panel report-panel--z">
-          {zSealed ? (
+          {zReceipt ? (
             <div className="report-z-sealed">
               <CheckIcon size={28} />
               <span>
-                Z #{zSealed.zNumber} issued {formatClock(new Date())}
+                Z #{zReceipt.zNumber} issued {formatClock(new Date())}
               </span>
+              <button type="button" className="report-z-print" onClick={() => window.print()}>
+                Print / Save as PDF
+              </button>
+              <p className="report-z-print-hint">Opens the print dialog — AirPrint to a printer, or “Save to Files” as a PDF for the folder.</p>
+              <ZReceipt data={zReceipt} />
             </div>
           ) : (
             <>

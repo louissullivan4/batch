@@ -165,9 +165,34 @@
 .report-z-sealed {
   margin: auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: var(--space-sm);
   color: var(--color-raised);
   font-size: var(--type-item-size);
   font-weight: 600;
+}
+
+.report-z-print {
+  min-height: var(--touch-primary);
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-raised);
+  background: transparent;
+  color: var(--color-raised);
+  font-size: var(--type-item-size);
+  font-weight: 600;
+}
+
+.report-z-print:active {
+  background: color-mix(in srgb, var(--color-raised) 15%, transparent);
+}
+
+.report-z-print-hint {
+  margin: 0;
+  max-width: 320px;
+  text-align: center;
+  font-size: var(--type-body-size);
+  font-weight: 400;
+  color: color-mix(in srgb, var(--color-raised) 80%, transparent);
 }

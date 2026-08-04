@@ -40,6 +40,14 @@ lives on a device in a café, so offline brute-force is the realistic threat.
 
 **7. Shift handover** — one staff member out, another in, without closing the shift.
 
+**8. Printable Z report** (added mid-sprint) — when a Z is issued, the operator can **print it or save
+it as a PDF** instead of writing the report out by hand, to file a physical copy at end of shift. Uses
+the browser print dialog (`window.print()` over a print stylesheet) — zero new dependencies, works
+offline, and on iPad gives both AirPrint and "Save to Files → PDF" from one button. The document is a
+pure snapshot of the sealed shift (`buildZReceipt`), so it can never disagree with the event log.
+X-report printing is deliberately not built (X is a throwaway peek); the printed *visual layout* is
+functional/token-based and can be refined in Claude Design later if a formal document design is wanted.
+
 ## Exit criteria
 
 - [ ] 50-order mock shift with 3 paid-outs and a planted €20 discrepancy reconciles exactly and
