@@ -63,7 +63,7 @@ describe('modifier helpers', () => {
     const sel = { ...base, single: { ...base.single, milk: 'milk-oat' }, steppers: { shots: 3 } }
     expect(linePreviewMinor(MENU, flat, sel)).toBe(480n) // 380 + 40 oat + 60 shot
     const names = selectionToModifiers(MENU, flat, sel).map((m) => m.name)
-    expect(names).toEqual(['Oat', 'Extra shot'])
+    expect(names).toEqual(['Oat milk', 'Extra shot']) // summaryName on the line, matching the design PNG
   })
 
   it('a non-default but free choice (Skim) still shows, priced at zero', () => {
@@ -71,7 +71,7 @@ describe('modifier helpers', () => {
     const base = defaultSelection(MENU, flat)
     const sel = { ...base, single: { ...base.single, milk: 'milk-skim' } }
     const mods = selectionToModifiers(MENU, flat, sel)
-    expect(mods).toEqual([{ modifierId: 'milk-skim', name: 'Skim', unitPriceMinor: 0n, vatRateBp: VAT_REDUCED_BP }])
+    expect(mods).toEqual([{ modifierId: 'milk-skim', name: 'Skim milk', unitPriceMinor: 0n, vatRateBp: VAT_REDUCED_BP }])
     expect(linePreviewMinor(MENU, flat, sel)).toBe(380n)
   })
 

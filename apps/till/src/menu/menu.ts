@@ -19,7 +19,10 @@ import { VAT_REDUCED_BP, VAT_STANDARD_BP, type LineModifier, type VatRateBp } fr
 
 export interface ModifierOption {
   readonly id: string
+  /** Short label shown in the sheet, e.g. "Oat". */
   readonly name: string
+  /** Longer label for the order line / receipt, e.g. "Oat milk". Defaults to `name`. */
+  readonly summaryName?: string
   /** Added to the line's per-unit price when this option is chosen. 0 = free / default. */
   readonly priceDeltaMinor: bigint
   readonly outOfStock?: boolean
@@ -109,10 +112,10 @@ const MODIFIER_GROUPS: Record<string, ModifierGroup> = {
     name: 'Milk',
     defaultOptionId: 'milk-whole',
     options: [
-      { id: 'milk-whole', name: 'Whole', priceDeltaMinor: 0n },
-      { id: 'milk-oat', name: 'Oat', priceDeltaMinor: 40n },
-      { id: 'milk-almond', name: 'Almond', priceDeltaMinor: 40n },
-      { id: 'milk-skim', name: 'Skim', priceDeltaMinor: 0n },
+      { id: 'milk-whole', name: 'Whole', summaryName: 'Whole milk', priceDeltaMinor: 0n },
+      { id: 'milk-oat', name: 'Oat', summaryName: 'Oat milk', priceDeltaMinor: 40n },
+      { id: 'milk-almond', name: 'Almond', summaryName: 'Almond milk', priceDeltaMinor: 40n },
+      { id: 'milk-skim', name: 'Skim', summaryName: 'Skim milk', priceDeltaMinor: 0n },
     ],
   },
   shots: {
@@ -304,11 +307,13 @@ export function selectionToModifiers(menu: Menu, item: MenuItem, sel: ModifierSe
       const chosen = sel.single[g.id] ?? g.defaultOptionId
       if (chosen === g.defaultOptionId) continue
       const opt = findOption(g, chosen)
-      if (opt) mods.push({ modifierId: opt.id, name: opt.name, unitPriceMinor: opt.priceDeltaMinor, vatRateBp: item.vatRateBp })
+      if (opt)
+        mods.push({ modifierId: opt.id, name: opt.summaryName ?? opt.name, unitPriceMinor: opt.priceDeltaMinor, vatRateBp: item.vatRateBp })
     } else if (g.kind === 'multi') {
       for (const optionId of sel.multi[g.id] ?? []) {
         const opt = findOption(g, optionId)
-        if (opt) mods.push({ modifierId: opt.id, name: opt.name, unitPriceMinor: opt.priceDeltaMinor, vatRateBp: item.vatRateBp })
+        if (opt)
+          mods.push({ modifierId: opt.id, name: opt.summaryName ?? opt.name, unitPriceMinor: opt.priceDeltaMinor, vatRateBp: item.vatRateBp })
       }
     } else {
       const count = sel.steppers[g.id] ?? g.defaultCount
