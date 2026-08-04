@@ -48,6 +48,42 @@ async function nextDeviceSeq(tx: Executor): Promise<number> {
 }
 
 /**
+ * Append one event + its outbox row inside an existing transaction. Idempotent on `event.eventId`.
+ * `nextDeviceSeq` re-reads `max(device_seq)` each call, so within a multi-event transaction the
+ * second event sees the first's insert and gets the next sequence.
+ */
+async function appendOne(tx: Executor, outgoing: OutgoingEvent, now: string): Promise<AppendOutcome> {
+  const { event, aggregateType, expectedTotalMinor } = outgoing
+  const existing = await tx.select<{ device_seq: number }>(
+    'select device_seq from events where event_id = ?',
+    [event.eventId],
+  )
+  const [found] = existing
+  if (found) return { deviceSeq: found.device_seq, alreadyPresent: true }
+
+  const deviceSeq = await nextDeviceSeq(tx)
+  await tx.execute(
+    `insert into events
+       (event_id, aggregate_type, aggregate_id, event_type, payload, occurred_at,
+        expected_total_minor, device_seq, created_at)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      event.eventId,
+      aggregateType,
+      event.aggregateId,
+      event.eventType,
+      toJson(event.payload),
+      event.occurredAt,
+      expectedTotalMinor === undefined ? null : expectedTotalMinor.toString(),
+      deviceSeq,
+      now,
+    ],
+  )
+  await tx.execute('insert into outbox (event_id) values (?)', [event.eventId])
+  return { deviceSeq, alreadyPresent: false }
+}
+
+/**
  * Append an event and queue it, in one transaction. Idempotent on `event.eventId`: re-appending the
  * same id (a retried local write after a crash) is a no-op that returns the existing `deviceSeq`.
  */
@@ -56,35 +92,26 @@ export function appendEvent(
   outgoing: OutgoingEvent,
   now: string = new Date().toISOString(),
 ): Promise<AppendOutcome> {
-  const { event, aggregateType, expectedTotalMinor } = outgoing
-  return store.transaction(async (tx) => {
-    const existing = await tx.select<{ device_seq: number }>(
-      'select device_seq from events where event_id = ?',
-      [event.eventId],
-    )
-    const [found] = existing
-    if (found) return { deviceSeq: found.device_seq, alreadyPresent: true }
+  return store.transaction((tx) => appendOne(tx, outgoing, now))
+}
 
-    const deviceSeq = await nextDeviceSeq(tx)
-    await tx.execute(
-      `insert into events
-         (event_id, aggregate_type, aggregate_id, event_type, payload, occurred_at,
-          expected_total_minor, device_seq, created_at)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        event.eventId,
-        aggregateType,
-        event.aggregateId,
-        event.eventType,
-        toJson(event.payload),
-        event.occurredAt,
-        expectedTotalMinor === undefined ? null : expectedTotalMinor.toString(),
-        deviceSeq,
-        now,
-      ],
-    )
-    await tx.execute('insert into outbox (event_id) values (?)', [event.eventId])
-    return { deviceSeq, alreadyPresent: false }
+/**
+ * Append several events **atomically** — all in one transaction, so the group commits or rolls back
+ * as a unit. Used for the terminal cash-sale pair (`OrderTendered` + `OrderClosed`): a half-written
+ * sale (tender persisted, close lost) would sync a tender the server can never reconcile to a close,
+ * so the two must never diverge. Order is preserved; each event still gets a monotonic `device_seq`.
+ */
+export function appendEvents(
+  store: LocalStore,
+  outgoingList: readonly OutgoingEvent[],
+  now: string = new Date().toISOString(),
+): Promise<AppendOutcome[]> {
+  return store.transaction(async (tx) => {
+    const outcomes: AppendOutcome[] = []
+    for (const outgoing of outgoingList) {
+      outcomes.push(await appendOne(tx, outgoing, now))
+    }
+    return outcomes
   })
 }
 

@@ -11,6 +11,7 @@ import {
   reconcileOnStartup,
   syncOutbox,
   appendEvent,
+  appendEvents,
   type DeviceIdentity,
   type KeyValueStore,
   type LocalStats,
@@ -181,10 +182,44 @@ export async function commitEvent(outgoing: OutgoingEvent): Promise<void> {
   await appendEvent(store, outgoing)
 }
 
-/** Drain the outbox. The only place this module calls the network outside `reconcile()`. */
-export async function syncNow(): Promise<SyncOutcome> {
-  const { store, transport } = requireRuntime()
-  return syncOutbox(store, transport)
+/**
+ * Append several events atomically (one transaction). Used for the terminal cash-sale pair so a
+ * failed write leaves nothing behind — the caller rolls back its optimistic state and retries,
+ * rather than showing a receipt for a sale the outbox never captured.
+ */
+export async function commitEvents(outgoing: readonly OutgoingEvent[]): Promise<void> {
+  const { store } = requireRuntime()
+  await appendEvents(store, outgoing)
+}
+
+// Single-flight drain. Two things can ask to drain at once — the per-commit effect and a
+// connectivity-regain — and a rapid second commit can land mid-drain. `syncNow` therefore coalesces
+// concurrent callers onto one in-flight drain and loops once more if asked during it (`drainAgain`),
+// so events queued mid-drain aren't stranded and we never fire overlapping POST storms at the server.
+let draining: Promise<SyncOutcome> | null = null
+let drainAgain = false
+
+/** Drain the outbox to the server. The only place this module calls the network outside `reconcile()`. */
+export function syncNow(): Promise<SyncOutcome> {
+  if (draining) {
+    drainAgain = true
+    return draining
+  }
+  draining = (async (): Promise<SyncOutcome> => {
+    try {
+      const { store, transport } = requireRuntime()
+      let outcome = await syncOutbox(store, transport)
+      while (drainAgain && !outcome.offline) {
+        drainAgain = false
+        outcome = await syncOutbox(store, transport)
+      }
+      return outcome
+    } finally {
+      draining = null
+      drainAgain = false
+    }
+  })()
+  return draining
 }
 
 /** Local counts for the unsynced-count/age indicator (till CLAUDE.md). */

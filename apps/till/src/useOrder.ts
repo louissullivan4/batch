@@ -9,7 +9,7 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { computeTotals, reduceOrder, type OrderEvent, type OrderState, type OrderTotals } from '@batch/domain'
-import { commitEvent } from './runtime'
+import { commitEvent, commitEvents } from './runtime'
 import { measure } from './perf'
 import {
   activeLineViews,
@@ -95,14 +95,26 @@ export function useOrder(options: UseOrderOptions = {}): UseOrder {
     [applyAndCommit],
   )
 
-  const completeCashSale = useCallback(
-    (tenderedMinor: bigint): Promise<void> => {
-      const oid = orderIdRef.current
-      if (oid === null) return Promise.resolve()
-      return applyAndCommit(completeCashOps(eventsRef.current, oid, tenderedMinor))
-    },
-    [applyAndCommit],
-  )
+  const completeCashSale = useCallback(async (tenderedMinor: bigint): Promise<void> => {
+    const oid = orderIdRef.current
+    if (oid === null) return
+    const outgoing = completeCashOps(eventsRef.current, oid, tenderedMinor)
+    const snapshot = eventsRef.current
+    const next = [...snapshot, ...outgoing.map((o) => o.event)]
+    eventsRef.current = next
+    setEvents(next)
+    try {
+      // Tender + close commit ATOMICALLY (one transaction). Unlike add/void — where a failed write is
+      // toasted and the line kept on screen — the terminal pair must not half-persist or show a
+      // receipt for a sale the outbox never captured (sync-auditor finding). On failure, roll the
+      // optimistic append back and rethrow so the caller stays on tender and the barista retries.
+      await measure('localCommit', () => commitEvents(outgoing))
+    } catch (err) {
+      eventsRef.current = snapshot
+      setEvents(snapshot)
+      throw err instanceof Error ? err : new Error(String(err))
+    }
+  }, [])
 
   const reset = useCallback((): void => {
     eventsRef.current = []

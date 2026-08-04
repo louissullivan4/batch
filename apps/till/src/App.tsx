@@ -108,12 +108,14 @@ export function App(): JSX.Element {
     // Runs once on mount only — re-running on `connect` identity changes would re-trigger auto-connect.
   }, [])
 
-  // Drain the outbox per event when online (apps/till/CLAUDE.md write path), triggered from the UI
-  // layer: each committed order event bumps `order.events.length`, which is the per-event drain
-  // signal. Also re-drains whenever connectivity is regained. Never awaited by anything on the order
-  // path — this effect runs after the paint, not before it.
+  // Drain the outbox to the server (apps/till/CLAUDE.md write path). Fires on: startup (`ready` flips
+  // true → drains any events queued in a PRIOR session), every commit (`order.events.length` bumps →
+  // per-event drain), and connectivity regain (`online`). It must NOT be gated on the in-memory order
+  // being non-empty — a barista who sells offline then taps "New sale" leaves an empty order, and the
+  // queued sales must still drain when wifi returns (sync-auditor finding). `syncNow` on an empty
+  // outbox is a cheap no-op. Never awaited by anything on the order path — this runs after paint.
   useEffect(() => {
-    if (!ready || order.events.length === 0) return
+    if (!ready) return
     let cancelled = false
     void (async () => {
       setStats(await refreshStats())
@@ -158,7 +160,14 @@ export function App(): JSX.Element {
     async (tenderedMinor: bigint): Promise<void> => {
       const preTotals = order.totals
       const preLines = order.lines
-      await order.completeCashSale(tenderedMinor)
+      try {
+        await order.completeCashSale(tenderedMinor)
+      } catch {
+        // The terminal write failed and rolled back — the sale is NOT recorded. Stay on the tender
+        // screen (order intact) and tell the barista to retry rather than printing a false receipt.
+        showToast("Couldn't record the sale — check storage and try again.")
+        return
+      }
       if (preTotals) {
         const changeMinor = tenderedMinor - preTotals.totalMinor
         setClosedSnapshot({
@@ -175,7 +184,7 @@ export function App(): JSX.Element {
       }
       setScreen('receipt')
     },
-    [order],
+    [order, showToast],
   )
 
   const handleNewSale = useCallback(() => {

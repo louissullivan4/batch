@@ -4,6 +4,7 @@ export { LocalStorageKeyValue, MemoryKeyValue, type KeyValueStore } from './kv'
 export type { DeviceIdentity, SyncTransport } from './types'
 export {
   appendEvent,
+  appendEvents,
   listUnsynced,
   markSynced,
   markRejected,

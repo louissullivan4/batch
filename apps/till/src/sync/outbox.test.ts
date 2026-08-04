@@ -2,7 +2,7 @@ import { createNodeSqliteStore } from '@batch/storage/testing'
 import type { LocalStore } from '@batch/storage'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { addLine, openOrder } from '../order'
-import { appendEvent, listUnsynced, localStats, markRejected, markSynced } from './outbox'
+import { appendEvent, appendEvents, listUnsynced, localStats, markRejected, markSynced } from './outbox'
 import { migrateLocal } from './schema'
 
 describe('outbox write path', () => {
@@ -45,6 +45,35 @@ describe('outbox write path', () => {
       addLine(orderId, { productId: 'fw', name: 'Flat White', quantity: 1n, unitPriceMinor: 350n, vatRateBp: 1350, fulfilment: 'EAT_IN' }),
     )
     expect(b.deviceSeq).toBe(a.deviceSeq + 1)
+  })
+
+  it('appendEvents writes a group atomically with monotonic device_seq', async () => {
+    const { orderId, outgoing: opened } = openOrder({ fulfilment: 'EAT_IN' })
+    const line = addLine(orderId, {
+      productId: 'fw',
+      name: 'Flat White',
+      quantity: 1n,
+      unitPriceMinor: 350n,
+      vatRateBp: 1350,
+      fulfilment: 'EAT_IN',
+    })
+    const outcomes = await appendEvents(store, [opened, line])
+
+    expect(outcomes).toHaveLength(2)
+    expect(outcomes[1]?.deviceSeq).toBe(outcomes[0]!.deviceSeq + 1)
+    const rows = await store.select<{ n: number }>('select count(*) as n from events')
+    expect(rows[0]?.n).toBe(2)
+    const outbox = await store.select<{ n: number }>('select count(*) as n from outbox where synced_at is null')
+    expect(outbox[0]?.n).toBe(2)
+  })
+
+  it('appendEvents is idempotent on event id (a re-committed pair is a no-op)', async () => {
+    const { outgoing } = openOrder({ fulfilment: 'EAT_IN' })
+    await appendEvents(store, [outgoing])
+    const second = await appendEvents(store, [outgoing])
+    expect(second[0]?.alreadyPresent).toBe(true)
+    const rows = await store.select<{ n: number }>('select count(*) as n from events')
+    expect(rows[0]?.n).toBe(1)
   })
 
   it('stores money as TEXT — a value beyond the JS safe range survives losslessly', async () => {
