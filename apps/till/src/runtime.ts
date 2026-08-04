@@ -59,9 +59,14 @@ interface Runtime {
   readonly identity: DeviceIdentity
   readonly transport: HttpSyncTransport
   readonly tenantId: string
+  readonly apiBaseUrl: string
 }
 
 let runtime: Runtime | null = null
+// Serialises init/teardown. Two concurrent `initTill` calls — React StrictMode double-invokes the
+// mount effect in dev — must never open two OPFS SAHPool handles on the same pool (the browser rejects
+// the second: "Access Handles cannot be created if there is another open Access Handle").
+let opening: Promise<unknown> = Promise.resolve()
 
 export function isInitialised(): boolean {
   return runtime !== null
@@ -71,13 +76,14 @@ export function currentIdentity(): DeviceIdentity | null {
   return runtime?.identity ?? null
 }
 
-/**
- * Open the local store, apply the schema, and establish device identity + transport. Safe to call
- * again with a different config (e.g. the operator re-points the till at a different tenant/API) —
- * the previous store handle is closed first.
- */
-export async function initTill(config: TillConfig): Promise<{ identity: DeviceIdentity }> {
-  saveConfig(config)
+function matchesConfig(rt: Runtime, config: TillConfig): boolean {
+  return rt.tenantId === config.tenantId && rt.apiBaseUrl === config.apiBaseUrl
+}
+
+async function openRuntime(config: TillConfig): Promise<{ identity: DeviceIdentity }> {
+  // Re-check inside the critical section: a call queued ahead of this one may have already opened the
+  // exact runtime we want (the StrictMode double-mount path), so we reuse it instead of reopening.
+  if (runtime && matchesConfig(runtime, config)) return { identity: runtime.identity }
 
   if (runtime) {
     await runtime.store.close()
@@ -89,8 +95,33 @@ export async function initTill(config: TillConfig): Promise<{ identity: DeviceId
   const { identity } = ensureDeviceIdentity(configKv, config.tenantId)
   const transport = new HttpSyncTransport(config.apiBaseUrl, identity)
 
-  runtime = { store, kv: configKv, identity, transport, tenantId: config.tenantId }
+  runtime = { store, kv: configKv, identity, transport, tenantId: config.tenantId, apiBaseUrl: config.apiBaseUrl }
   return { identity }
+}
+
+/**
+ * Open the local store, apply the schema, and establish device identity + transport. Idempotent and
+ * concurrency-safe: called again with the same config it reuses the open store; with a different
+ * config (operator re-points the till at another tenant/API) it tears down first. All calls are
+ * serialised so two of them can never race on the OPFS pool handles.
+ */
+export function initTill(config: TillConfig): Promise<{ identity: DeviceIdentity }> {
+  saveConfig(config)
+
+  // Fast path: already open for this exact config — no need to touch the store at all.
+  if (runtime && matchesConfig(runtime, config)) {
+    return Promise.resolve({ identity: runtime.identity })
+  }
+
+  const result = opening.then(
+    () => openRuntime(config),
+    () => openRuntime(config),
+  )
+  opening = result.then(
+    () => undefined,
+    () => undefined,
+  )
+  return result
 }
 
 function requireRuntime(): Runtime {

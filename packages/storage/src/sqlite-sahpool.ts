@@ -48,11 +48,45 @@ export interface SahPoolOptions {
   readonly filename?: string
 }
 
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * True for the transient "the pool's OPFS access handles are still held" error — a previous page's or
+ * worker's SAHPool handles not yet released after a reload/reconnect. It clears within a few hundred
+ * ms, unlike "Missing required OPFS APIs" (a permanent wrong-context error we must not retry).
+ */
+function isBusyAccessHandleError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  return (
+    err.name === 'NoModificationAllowedError' ||
+    /createSyncAccessHandle|Access Handles cannot be created/i.test(err.message)
+  )
+}
+
+/**
+ * Install the SAHPool VFS, retrying the transient access-handle-busy race a few times. Concurrent
+ * opens on the same pool within one page are prevented upstream (the till serialises init); this
+ * only covers a lingering handle from a just-unloaded page/worker, which releases shortly.
+ */
+async function installSahPool(sqlite3: Sqlite3Static, name: string): Promise<OpfsSahPoolUtil> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt < 6; attempt++) {
+    try {
+      return await sqlite3.installOpfsSAHPoolVfs({ name })
+    } catch (err) {
+      lastErr = err
+      if (!isBusyAccessHandleError(err)) throw err
+      await delay(75 * (attempt + 1))
+    }
+  }
+  throw lastErr
+}
+
 /** Boot sqlite-wasm, install the OPFS SAHPool VFS, and open (or create) the DB. Async; ops after are sync. */
 export async function openSahPoolDb(options: SahPoolOptions = {}): Promise<Sqlite3OoDb> {
   const init = sqlite3InitModule as unknown as InitModule
   const sqlite3 = await init({ printErr: (m) => console.error('[sqlite]', m) })
-  const pool = await sqlite3.installOpfsSAHPoolVfs({ name: options.poolName ?? 'batch-till' })
+  const pool = await installSahPool(sqlite3, options.poolName ?? 'batch-till')
   return new pool.OpfsSAHPoolDb(options.filename ?? '/batch-till.sqlite3')
 }
 
