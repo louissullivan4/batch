@@ -1,65 +1,14 @@
-import { DatabaseSync } from 'node:sqlite'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { Executor, LocalStore, Row, SqlValue } from './index'
+import type { Executor, LocalStore } from './index'
+import { createNodeSqliteStore } from './testing'
 
 /**
- * A `LocalStore` backed by Node's built-in `node:sqlite`. It exists ONLY in this test — it is not a
- * shipped adapter (Sprint 1 ships OPFS + SQLite-wasm). Its whole job is to be a *third, independent*
- * backend: if the interface can be satisfied by node:sqlite, OPFS, and Capacitor alike, then the
- * abstraction genuinely leaks nothing about any one engine. If this fixture ever needs a method the
- * interface doesn't expose — or an interface change breaks it — that is the leak alarm firing.
+ * The contract test runs against `createNodeSqliteStore` (`./testing`), a `LocalStore` backed by
+ * Node's built-in `node:sqlite` — a *third, independent* backend beside OPFS and Capacitor. If the
+ * interface can be satisfied by node:sqlite, OPFS, and Capacitor alike, the abstraction genuinely
+ * leaks nothing about any one engine. If a change to `index.ts` breaks this fixture, that is the leak
+ * alarm firing. Every adapter added later must pass this same suite.
  */
-function createNodeSqliteStore(): LocalStore {
-  const db = new DatabaseSync(':memory:')
-
-  const executor = (): Executor => ({
-    execute(sql, params = []) {
-      // Each `execute` runs a single statement — the portable floor across prepared-statement
-      // adapters. `RETURNING` and `SELECT` yield rows; DDL and no-param writes go through exec.
-      const returnsRows = /\breturning\b/i.test(sql) || /^\s*select\b/i.test(sql)
-      if (returnsRows) {
-        const rows = db.prepare(sql).all(...(params as SqlValue[])) as unknown as Row[]
-        return Promise.resolve({ rows, rowsAffected: rows.length, lastInsertRowId: null })
-      }
-      if (params.length === 0) {
-        db.exec(sql)
-        return Promise.resolve({ rows: [], rowsAffected: 0, lastInsertRowId: null })
-      }
-      const info = db.prepare(sql).run(...(params as SqlValue[]))
-      return Promise.resolve({
-        rows: [],
-        rowsAffected: Number(info.changes),
-        lastInsertRowId: info.lastInsertRowid === undefined ? null : BigInt(info.lastInsertRowid),
-      })
-    },
-    select<T extends Row = Row>(sql: string, params: readonly SqlValue[] = []) {
-      const rows = db.prepare(sql).all(...(params as SqlValue[])) as unknown as T[]
-      return Promise.resolve(rows as readonly T[])
-    },
-  })
-
-  const base = executor()
-
-  return {
-    execute: base.execute,
-    select: base.select,
-    async transaction<T>(work: (tx: Executor) => Promise<T>): Promise<T> {
-      db.exec('begin')
-      try {
-        const result = await work(executor())
-        db.exec('commit')
-        return result
-      } catch (err) {
-        db.exec('rollback')
-        throw err
-      }
-    },
-    close() {
-      db.close()
-      return Promise.resolve()
-    },
-  }
-}
 
 /**
  * The kind of caller the abstraction exists for: it takes an `Executor`, so it neither knows nor
